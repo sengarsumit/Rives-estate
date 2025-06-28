@@ -32,10 +32,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updateUser(User user) {
-        if(userRepository.existsByEmail(user.getEmail())) {
+        if (user.getId() != null && userRepository.existsById(user.getId())) {
             userRepository.save(user);
+        } else {
+            throw new RuntimeException("User not found to update");
         }
-
     }
 
     @Override

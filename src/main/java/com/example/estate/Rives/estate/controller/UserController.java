@@ -1,5 +1,6 @@
 package com.example.estate.Rives.estate.controller;
 
+import com.example.estate.Rives.estate.DTO.UpdateUserDTO;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.service.UserService;
@@ -37,17 +38,34 @@ public class UserController {
         return ResponseEntity.badRequest().body("User does not exist");
     }
 
-    @PutMapping("/{username}")
-    public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User updatedUser)
-    {
-        if(userService.isUsernameExist(username)) {
-            User user1=userService.getUserByUsername(username);
-            updatedUser.setId(user1.getId());
-            updatedUser.setRole(user1.getRole());
-            userService.updateUser(updatedUser);
-            return ResponseEntity.ok().body("user has been updated");
+    @PatchMapping("/{username}")
+    public ResponseEntity<User> updateUser(
+            @PathVariable String username,
+            @RequestBody UpdateUserDTO updateDTO
+    ) {
+        User user = userService.getUserByUsername(username);
+
+        if (updateDTO.getFirstName() != null) {
+            user.setFirstName(updateDTO.getFirstName());
         }
-        return ResponseEntity.badRequest().body("User does not exist");
+        if(updateDTO.getLastName() != null) {
+            user.setLastName(updateDTO.getLastName());
+        }
+        if (updateDTO.getEmail() != null) {
+            user.setEmail(updateDTO.getEmail());
+        }
+        if (updateDTO.getPhone() != null) {
+            user.setPhone(updateDTO.getPhone());
+        }
+        if (updateDTO.getPassword() != null) {
+            user.setPassword(updateDTO.getPassword()); // consider encoding it
+        }
+        if (updateDTO.getRole() != null) {
+            user.setRole(updateDTO.getRole());
+        }
+
+        userService.updateUser(user);
+        return ResponseEntity.ok(user);
     }
 
 
