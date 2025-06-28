@@ -37,6 +37,19 @@ public class UserController {
         return ResponseEntity.badRequest().body("User does not exist");
     }
 
+    @PutMapping("/{username}")
+    public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User updatedUser)
+    {
+        if(userService.isUsernameExist(username)) {
+            User user1=userService.getUserByUsername(username);
+            updatedUser.setId(user1.getId());
+            updatedUser.setRole(user1.getRole());
+            userService.updateUser(updatedUser);
+            return ResponseEntity.ok().body("user has been updated");
+        }
+        return ResponseEntity.badRequest().body("User does not exist");
+    }
+
 
 
 }
