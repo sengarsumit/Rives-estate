@@ -52,4 +52,9 @@ public class PropertyServiceImpl implements PropertyService {
     public List<Property> getPropertiesByDealer(User dealer) {
         return propertyRepository.findByDealer(dealer);
     }
+
+    @Override
+    public boolean isPropertyExist(String title) {
+        return propertyRepository.existsByTitle(title);
+    }
 }
