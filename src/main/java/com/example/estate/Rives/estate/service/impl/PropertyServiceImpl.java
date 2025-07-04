@@ -7,6 +7,7 @@ import com.example.estate.Rives.estate.service.PropertyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,5 +57,11 @@ public class PropertyServiceImpl implements PropertyService {
     @Override
     public boolean isPropertyExist(String title) {
         return propertyRepository.existsByTitle(title);
+    }
+
+    @Override
+    public Property getPropertyByTitle(String title) {
+        Optional<Property> optionalProperty = propertyRepository.findByTitle(title);
+        return optionalProperty.orElseThrow(()->new RuntimeException(String.valueOf(new MessageFormat("property not found!"))));
     }
 }

@@ -15,6 +15,6 @@ public interface PropertyService {
     void updateProperty(Property property);
     List<Property> getPropertiesByDealer(User dealer);
     boolean isPropertyExist(String title);
-
+    Property getPropertyByTitle(String title);
 
 }
