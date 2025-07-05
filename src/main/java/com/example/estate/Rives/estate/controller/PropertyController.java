@@ -24,10 +24,10 @@ public class PropertyController {
 
     @PostMapping("/create")
     public ResponseEntity<?> createProperty(@RequestBody Property property,@AuthenticationPrincipal User loggedInUser){
-//        if(!loggedInUser.getRole().equals(Role.DEALER))
-//        {
-//            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only dealers can post properties");
-//        }
+        if(!loggedInUser.getRole().equals(Role.DEALER))
+        {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only dealers can post properties");
+       }
 
         if (loggedInUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
@@ -57,11 +57,17 @@ public class PropertyController {
         return ResponseEntity.badRequest().body("property not found");
     }
     @PatchMapping("/{title}")
-    public ResponseEntity<?> updateProperty(@PathVariable String title,@RequestBody Property propertyUpdates){
+    public ResponseEntity<?> updateProperty(@PathVariable String title,@RequestBody Property propertyUpdates,@AuthenticationPrincipal User loggedInUser){
+
+
         if(!propertyService.isPropertyExist(title)){
             return ResponseEntity.badRequest().body("property not found");
         }
         Property existingProperty=propertyService.getPropertyByTitle(title);
+        if(!loggedInUser.getId().equals(existingProperty.getDealer().getId()))
+        {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only owners can update properties");
+        }
 
         if(propertyUpdates.getTitle()!=null){
             existingProperty.setTitle(propertyUpdates.getTitle());

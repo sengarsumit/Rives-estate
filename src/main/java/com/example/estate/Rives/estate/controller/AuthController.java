@@ -48,11 +48,14 @@ public class AuthController {
         if (userRepository.existsByEmail(user.getEmail())) {
             return new ResponseEntity<>("Email is already in use", HttpStatus.CONFLICT);
         }
+        if(user.getRole()==Role.ADMIN){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("cannot register as ADMIN");
+        }
         User newUser=new User();
         newUser.setUsername(user.getUsername());
         newUser.setEmail(user.getEmail());
         newUser.setPassword(encoder.encode(user.getPassword()));
-        newUser.setRole(Role.USER);
+        newUser.setRole(user.getRole());
 
         userRepository.save(newUser);
         return new ResponseEntity<>("User registered successfully", HttpStatus.CREATED);
