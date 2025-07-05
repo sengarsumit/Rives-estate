@@ -6,9 +6,7 @@ import com.example.estate.Rives.estate.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.text.MessageFormat;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -27,9 +25,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserByUsername(String username) {
         User user = userRepository.findByUsername(username);
-        if(user == null){
-            return null;
-        }
         return user;
     }
 

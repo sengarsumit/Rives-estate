@@ -1,10 +1,14 @@
 package com.example.estate.Rives.estate.controller;
 
+import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.User;
+import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.service.PropertyService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,15 +18,28 @@ import java.util.List;
 public class PropertyController {
 
     @Autowired
+    UserRepository userRepository;
+    @Autowired
     private PropertyService propertyService;
 
     @PostMapping("/create")
-    public ResponseEntity<?> createProperty(@RequestBody Property property){
-        if(propertyService.isPropertyExist(property.getTitle())){
-            return ResponseEntity.badRequest().body("property already exist");
+    public ResponseEntity<?> createProperty(@RequestBody Property property,@AuthenticationPrincipal User loggedInUser){
+//        if(!loggedInUser.getRole().equals(Role.DEALER))
+//        {
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only dealers can post properties");
+//        }
+
+        if (loggedInUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
-        Property property1=propertyService.save(property);
-        return ResponseEntity.ok(property1);
+
+        if (propertyService.isPropertyExist(property.getTitle())) {
+            return ResponseEntity.badRequest().body("Property already exists with this title");
+        }
+
+        property.setDealer(loggedInUser);
+        Property saved = propertyService.save(property);
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/all")

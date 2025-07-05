@@ -1,19 +1,21 @@
 package com.example.estate.Rives.estate.security;
 
-import com.example.estate.Rives.estate.model.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-
 @Component
 public class JwtUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
 
     @Value("${jwt.secret.key}")
     private String secret_key;
@@ -21,44 +23,48 @@ public class JwtUtil {
     private SecretKey key;
 
     @PostConstruct
-    public void init(){
-        this.key=Keys.hmacShaKeyFor(secret_key.getBytes(StandardCharsets.UTF_8));
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(secret_key.getBytes(StandardCharsets.UTF_8));
+        logger.info("JWT Secret key initialized.");
     }
 
-
-    public String generateToken(String username) {   //generate jwt token
+    public String generateToken(String username) {
+        logger.info("Generating token for user: {}", username);
         return Jwts.builder()
                 .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 360000))
-                .signWith(key,Jwts.SIG.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + 360000)) // 6 minutes
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String getUsernameFromToken(String token){
-        return Jwts.parser()
-                .setSigningKey(key).build()
+    public String getUsernameFromToken(String token) {
+        String username = Jwts.parser()
+                .setSigningKey(key)
+                .build()
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+        logger.info("Extracted username from token: {}", username);
+        return username;
     }
+
     public boolean validateJwtToken(String token) {
         try {
             Jwts.parser().setSigningKey(key).build().parseClaimsJws(token);
+            logger.info("JWT token is valid.");
             return true;
         } catch (SecurityException e) {
-            System.out.println("Invalid JWT signature: " + e.getMessage());
+            logger.error("Invalid JWT signature: {}", e.getMessage());
         } catch (MalformedJwtException e) {
-            System.out.println("Invalid JWT token: " + e.getMessage());
+            logger.error("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            System.out.println("JWT token is expired: " + e.getMessage());
+            logger.warn("JWT token is expired: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            System.out.println("JWT token is unsupported: " + e.getMessage());
+            logger.error("JWT token is unsupported: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            System.out.println("JWT claims string is empty: " + e.getMessage());
+            logger.error("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
     }
-
-
 }

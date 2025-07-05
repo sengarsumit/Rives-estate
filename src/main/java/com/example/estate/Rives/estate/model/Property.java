@@ -26,7 +26,8 @@ public class Property {
     private String locality;
     private Double rental;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dealer_id")
+
     private User dealer;
 }
