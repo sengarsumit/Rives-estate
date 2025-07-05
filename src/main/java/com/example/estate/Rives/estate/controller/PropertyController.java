@@ -48,8 +48,10 @@ public class PropertyController {
     }
 
     @DeleteMapping("/delete/{title}")
-    public ResponseEntity<?> deleteProperty(@PathVariable String title){
-        if(propertyService.isPropertyExist(title)){
+    public ResponseEntity<?> deleteProperty(@PathVariable String title,@AuthenticationPrincipal User loggedInUser){
+
+        Property existingProperty=propertyService.getPropertyByTitle(title);
+        if(propertyService.isPropertyExist(title) && loggedInUser.getId().equals(existingProperty.getDealer().getId()) ){
             Property property=propertyService.getPropertyByTitle(title);
             propertyService.delete(property);
             return ResponseEntity.ok().body("property deleted");

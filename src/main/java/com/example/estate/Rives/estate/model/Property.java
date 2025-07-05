@@ -1,5 +1,6 @@
 package com.example.estate.Rives.estate.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +29,6 @@ public class Property {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dealer_id")
-
+    @JsonIgnoreProperties({"properties", "hibernateLazyInitializer", "handler"})
     private User dealer;
 }
