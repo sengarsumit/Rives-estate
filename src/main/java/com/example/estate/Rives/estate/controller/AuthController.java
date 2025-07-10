@@ -11,6 +11,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,13 +32,17 @@ public class AuthController {
     PasswordEncoder encoder;
 
     @PostMapping("/signin")
-    public String authenticateUser(@RequestBody User user)
-    {
+    public String authenticateUser(@RequestBody User user) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
         );
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        return jwtUtil.generateToken(userDetails.getUsername());
+
+        User dbUser = userRepository.findByUsername(userDetails.getUsername());
+        if (dbUser == null) {
+            throw new UsernameNotFoundException("User not found");
+        }
+        return jwtUtil.generateToken(dbUser.getUsername(), dbUser.getRole().name());
     }
 
     @PostMapping("/signup")

@@ -28,12 +28,13 @@ public class JwtUtil {
         logger.info("JWT Secret key initialized.");
     }
 
-    public String generateToken(String username) {
-        logger.info("Generating token for user: {}", username);
+    public String generateToken(String username,String role) {
+        logger.info("Generating token for user: {},role{}", username,role);
         return Jwts.builder()
                 .setSubject(username)
+                .claim("role",role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 360000)) // 6 minutes
+                .setExpiration(new Date(System.currentTimeMillis() + 36000000))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -44,9 +45,17 @@ public class JwtUtil {
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .getSubject();
+                .get("role",String.class);
         logger.info("Extracted username from token: {}", username);
         return username;
+    }
+    public String getRoleFromToken(String token) {
+        return Jwts.parser()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
     }
 
     public boolean validateJwtToken(String token) {
