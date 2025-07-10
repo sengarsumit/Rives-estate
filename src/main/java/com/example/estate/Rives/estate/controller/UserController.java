@@ -6,6 +6,7 @@ import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public class UserController {
         User user1=userService.saveUser(user);
         return ResponseEntity.ok(user1);
     }
-
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
     @DeleteMapping("/{username}")
     public ResponseEntity<?> deleteUser(@PathVariable String username){
         if(userService.isUsernameExist(username)) {
@@ -39,7 +40,7 @@ public class UserController {
         }
         return ResponseEntity.badRequest().body("User does not exist");
     }
-
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
     @PatchMapping("/{username}")
     public ResponseEntity<User> updateUser(
             @PathVariable String username,
