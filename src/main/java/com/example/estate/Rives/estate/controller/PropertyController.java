@@ -4,6 +4,7 @@ import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
+import com.example.estate.Rives.estate.service.ImageService;
 import com.example.estate.Rives.estate.service.PropertyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,8 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/properties")
@@ -22,14 +25,15 @@ public class PropertyController {
     UserRepository userRepository;
     @Autowired
     private PropertyService propertyService;
+    @Autowired
+    private ImageService imageService;
 
     @PreAuthorize("hasRole('DEALER')")
     @PostMapping("/create")
-    public ResponseEntity<?> createProperty(@RequestBody Property property,@AuthenticationPrincipal User loggedInUser){
-        if(!loggedInUser.getRole().equals(Role.DEALER))
-        {
+    public ResponseEntity<?> createProperty(@RequestBody Property property, @AuthenticationPrincipal User loggedInUser) {
+        if (!loggedInUser.getRole().equals(Role.DEALER)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only dealers can post properties");
-       }
+        }
 
         if (loggedInUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
@@ -43,55 +47,73 @@ public class PropertyController {
         Property saved = propertyService.save(property);
         return ResponseEntity.ok(saved);
     }
+
+    @PreAuthorize("hasRole('DEALER')")
+    @PostMapping("/{propertyId}/upload-images")
+    public ResponseEntity<?> uploadImages(@PathVariable UUID propertyId,
+                                          @RequestParam("images") List<MultipartFile> images,
+                                          @AuthenticationPrincipal User loggedInUser) {
+        Property property = propertyService.getPropertyById(propertyId);
+        if (property == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Property not found");
+        }
+
+        if (!property.getDealer().getId().equals(loggedInUser.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the owner dealer can upload images");
+        }
+
+        List<String> imageUrls = imageService.uploadImages(images, propertyId);
+        return ResponseEntity.ok(imageUrls);
+    }
+
     @PreAuthorize("hasRole('USER')")
     @GetMapping("/all")
-    public ResponseEntity<List<Property>> getAllProperty(){
+    public ResponseEntity<List<Property>> getAllProperty() {
         return ResponseEntity.ok(propertyService.findAllProperties());
     }
+
     @PreAuthorize("hasRole('DEALER')")
     @DeleteMapping("/delete/{title}")
-    public ResponseEntity<?> deleteProperty(@PathVariable String title,@AuthenticationPrincipal User loggedInUser){
-
-        Property existingProperty=propertyService.getPropertyByTitle(title);
-        if(propertyService.isPropertyExist(title) && loggedInUser.getId().equals(existingProperty.getDealer().getId()) ){
-            Property property=propertyService.getPropertyByTitle(title);
-            propertyService.delete(property);
+    public ResponseEntity<?> deleteProperty(@PathVariable String title, @AuthenticationPrincipal User loggedInUser) {
+        Property existingProperty = propertyService.getPropertyByTitle(title);
+        if (propertyService.isPropertyExist(title) && loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
+            propertyService.delete(existingProperty);
             return ResponseEntity.ok().body("property deleted");
         }
         return ResponseEntity.badRequest().body("property not found");
     }
+
     @PreAuthorize("hasRole('DEALER')")
     @PatchMapping("/{title}")
-    public ResponseEntity<?> updateProperty(@PathVariable String title,@RequestBody Property propertyUpdates,@AuthenticationPrincipal User loggedInUser){
-
-
-        if(!propertyService.isPropertyExist(title)){
+    public ResponseEntity<?> updateProperty(@PathVariable String title,
+                                            @RequestBody Property propertyUpdates,
+                                            @AuthenticationPrincipal User loggedInUser) {
+        if (!propertyService.isPropertyExist(title)) {
             return ResponseEntity.badRequest().body("property not found");
         }
-        Property existingProperty=propertyService.getPropertyByTitle(title);
-        if(!loggedInUser.getId().equals(existingProperty.getDealer().getId()))
-        {
+
+        Property existingProperty = propertyService.getPropertyByTitle(title);
+        if (!loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only owners can update properties");
         }
 
-        if(propertyUpdates.getTitle()!=null){
+        if (propertyUpdates.getTitle() != null) {
             existingProperty.setTitle(propertyUpdates.getTitle());
         }
-        if(propertyUpdates.getDescription()!=null){
+        if (propertyUpdates.getDescription() != null) {
             existingProperty.setDescription(propertyUpdates.getDescription());
         }
-        if(propertyUpdates.getAddress() != null){
+        if (propertyUpdates.getAddress() != null) {
             existingProperty.setAddress(propertyUpdates.getAddress());
         }
-        if(propertyUpdates.getLocality()!=null){
+        if (propertyUpdates.getLocality() != null) {
             existingProperty.setLocality(propertyUpdates.getLocality());
         }
-        if(propertyUpdates.getRental()!=null){
+        if (propertyUpdates.getRental() != null) {
             existingProperty.setRental(propertyUpdates.getRental());
         }
-        Property updated=propertyService.save(existingProperty);
+
+        Property updated = propertyService.save(existingProperty);
         return ResponseEntity.ok(updated);
     }
-
-
 }

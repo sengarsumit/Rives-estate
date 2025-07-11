@@ -45,6 +45,7 @@ public class User implements UserDetails {
     private String lastName;
     private String phone;
 
+
     @Enumerated(EnumType.STRING)
     private Role role;
 

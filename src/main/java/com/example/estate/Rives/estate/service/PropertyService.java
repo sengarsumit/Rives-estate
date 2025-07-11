@@ -5,6 +5,7 @@ import com.example.estate.Rives.estate.model.User;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface PropertyService {
     Optional<Property> findByTitle(String title);
@@ -16,5 +17,6 @@ public interface PropertyService {
     List<Property> getPropertiesByDealer(User dealer);
     boolean isPropertyExist(String title);
     Property getPropertyByTitle(String title);
+    Property getPropertyById(UUID id);
 
 }

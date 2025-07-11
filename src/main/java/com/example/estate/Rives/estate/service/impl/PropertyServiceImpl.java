@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class PropertyServiceImpl implements PropertyService {
@@ -62,6 +63,12 @@ public class PropertyServiceImpl implements PropertyService {
     @Override
     public Property getPropertyByTitle(String title) {
         Optional<Property> optionalProperty = propertyRepository.findByTitle(title);
+        return optionalProperty.orElseThrow(()->new RuntimeException(String.valueOf(new MessageFormat("property not found!"))));
+    }
+
+    @Override
+    public Property getPropertyById(UUID id) {
+        Optional<Property> optionalProperty = propertyRepository.findById(id);
         return optionalProperty.orElseThrow(()->new RuntimeException(String.valueOf(new MessageFormat("property not found!"))));
     }
 }
