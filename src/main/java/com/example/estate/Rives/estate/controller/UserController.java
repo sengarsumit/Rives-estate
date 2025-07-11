@@ -18,18 +18,6 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @PostMapping("/create")
-    public ResponseEntity<?> createUser(@RequestBody User user){
-        if(userService.isUsernameExist(user.getUsername())) {
-            return ResponseEntity.badRequest().body("username already exist");
-        }
-        else if(userService.isEmailExist(user.getEmail())) {
-            return ResponseEntity.badRequest().body("email already exist");
-        }
-        user.setRole(Role.USER);
-        User user1=userService.saveUser(user);
-        return ResponseEntity.ok(user1);
-    }
     @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
     @DeleteMapping("/{username}")
     public ResponseEntity<?> deleteUser(@PathVariable String username){
@@ -70,6 +58,7 @@ public class UserController {
         userService.updateUser(user);
         return ResponseEntity.ok(user);
     }
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/all")
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());

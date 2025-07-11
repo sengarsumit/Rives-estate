@@ -8,6 +8,7 @@ import com.example.estate.Rives.estate.service.PropertyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ public class PropertyController {
     @Autowired
     private PropertyService propertyService;
 
+    @PreAuthorize("hasRole('DEALER')")
     @PostMapping("/create")
     public ResponseEntity<?> createProperty(@RequestBody Property property,@AuthenticationPrincipal User loggedInUser){
         if(!loggedInUser.getRole().equals(Role.DEALER))
@@ -41,12 +43,12 @@ public class PropertyController {
         Property saved = propertyService.save(property);
         return ResponseEntity.ok(saved);
     }
-
+    @PreAuthorize("hasRole('USER')")
     @GetMapping("/all")
     public ResponseEntity<List<Property>> getAllProperty(){
         return ResponseEntity.ok(propertyService.findAllProperties());
     }
-
+    @PreAuthorize("hasRole('DEALER')")
     @DeleteMapping("/delete/{title}")
     public ResponseEntity<?> deleteProperty(@PathVariable String title,@AuthenticationPrincipal User loggedInUser){
 
@@ -58,6 +60,7 @@ public class PropertyController {
         }
         return ResponseEntity.badRequest().body("property not found");
     }
+    @PreAuthorize("hasRole('DEALER')")
     @PatchMapping("/{title}")
     public ResponseEntity<?> updateProperty(@PathVariable String title,@RequestBody Property propertyUpdates,@AuthenticationPrincipal User loggedInUser){
 
