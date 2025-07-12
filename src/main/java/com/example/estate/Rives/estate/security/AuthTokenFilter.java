@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,7 +21,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 public class AuthTokenFilter extends OncePerRequestFilter {
@@ -32,11 +32,8 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
-
     @Autowired
     private UserRepository userRepository;
-
-
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -45,19 +42,16 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
                 String username = jwtUtil.getUsernameFromToken(jwt);
-
-                // 🔽 Load full user object from DB
-                Optional<User> optionalUser = Optional.ofNullable(userRepository.findByUsername(username));
-                if (optionalUser.isPresent()) {
-                    User user = optionalUser.get();
-                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-
-                    // 🔽 Use User as principal
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(user, null, authorities);
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                String role = jwtUtil.getRoleFromToken(jwt);
+                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                User user = userRepository.findByUsername(username);
+                if (user == null) {
+                    throw new UsernameNotFoundException("User not found");
                 }
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(user, null, authorities);
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
             logger.warn("Cannot set user authentication: {}", e.getMessage());

@@ -59,6 +59,9 @@ public class PropertyServiceImpl implements PropertyService {
     public boolean isPropertyExist(UUID id) {
         return propertyRepository.existsById(id);
     }
+    public boolean isPropertyExistByTitle(String title) {
+        return propertyRepository.existsByTitle(title);
+    }
 
 
     @Override

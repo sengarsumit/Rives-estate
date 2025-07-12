@@ -16,7 +16,7 @@ public interface PropertyService {
     void updateProperty(Property property);
     List<Property> getPropertiesByDealer(User dealer);
     boolean isPropertyExist(UUID id);
-
+    boolean isPropertyExistByTitle(String title);
     Property getPropertyByTitle(String title);
 
     Property getPropertyById(UUID id);

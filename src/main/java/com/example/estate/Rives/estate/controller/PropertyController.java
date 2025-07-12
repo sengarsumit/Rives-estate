@@ -31,15 +31,12 @@ public class PropertyController {
     @PreAuthorize("hasRole('DEALER')")
     @PostMapping("/create")
     public ResponseEntity<?> createProperty(@RequestBody Property property, @AuthenticationPrincipal User loggedInUser) {
-        if (!loggedInUser.getRole().equals(Role.DEALER)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only dealers can post properties");
-        }
 
         if (loggedInUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
 
-        if (propertyService.isPropertyExist(property.getId())) {
+        if (propertyService.isPropertyExistByTitle(property.getTitle())) {
             return ResponseEntity.badRequest().body("Property already exists with this title");
         }
 

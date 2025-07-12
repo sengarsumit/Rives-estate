@@ -45,7 +45,7 @@ public class JwtUtil {
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .get("role",String.class);
+                .getSubject();
         logger.info("Extracted username from token: {}", username);
         return username;
     }
