@@ -39,7 +39,7 @@ public class PropertyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
 
-        if (propertyService.isPropertyExist(property.getTitle())) {
+        if (propertyService.isPropertyExist(property.getId())) {
             return ResponseEntity.badRequest().body("Property already exists with this title");
         }
 
@@ -73,10 +73,10 @@ public class PropertyController {
     }
 
     @PreAuthorize("hasRole('DEALER')")
-    @DeleteMapping("/delete/{title}")
-    public ResponseEntity<?> deleteProperty(@PathVariable String title, @AuthenticationPrincipal User loggedInUser) {
-        Property existingProperty = propertyService.getPropertyByTitle(title);
-        if (propertyService.isPropertyExist(title) && loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteProperty(@PathVariable UUID id, @AuthenticationPrincipal User loggedInUser) {
+        Property existingProperty = propertyService.getPropertyById(id);
+        if (propertyService.isPropertyExist(id) && loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
             propertyService.delete(existingProperty);
             return ResponseEntity.ok().body("property deleted");
         }
@@ -84,15 +84,15 @@ public class PropertyController {
     }
 
     @PreAuthorize("hasRole('DEALER')")
-    @PatchMapping("/{title}")
-    public ResponseEntity<?> updateProperty(@PathVariable String title,
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateProperty(@PathVariable UUID id,
                                             @RequestBody Property propertyUpdates,
                                             @AuthenticationPrincipal User loggedInUser) {
-        if (!propertyService.isPropertyExist(title)) {
+        if (!propertyService.isPropertyExist(id)) {
             return ResponseEntity.badRequest().body("property not found");
         }
 
-        Property existingProperty = propertyService.getPropertyByTitle(title);
+        Property existingProperty = propertyService.getPropertyById(id);
         if (!loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only owners can update properties");
         }

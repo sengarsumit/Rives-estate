@@ -1,5 +1,7 @@
 package com.example.estate.Rives.estate.security;
 
+import com.example.estate.Rives.estate.model.User;
+import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class AuthTokenFilter extends OncePerRequestFilter {
@@ -30,6 +33,11 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
+    @Autowired
+    private UserRepository userRepository;
+
+
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -37,12 +45,19 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
                 String username = jwtUtil.getUsernameFromToken(jwt);
-                String role = jwtUtil.getRoleFromToken(jwt);
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, authorities);
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                // 🔽 Load full user object from DB
+                Optional<User> optionalUser = Optional.ofNullable(userRepository.findByUsername(username));
+                if (optionalUser.isPresent()) {
+                    User user = optionalUser.get();
+                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+
+                    // 🔽 Use User as principal
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(user, null, authorities);
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         } catch (Exception e) {
             logger.warn("Cannot set user authentication: {}", e.getMessage());

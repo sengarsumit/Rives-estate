@@ -30,7 +30,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updateUser(User user) {
-        if (user.getId() != null && userRepository.existsById(user.getId())) {
+        if (user.getUsername() != null && userRepository.existsByUsername(user.getUsername())) {
             userRepository.save(user);
         } else {
             throw new RuntimeException("User not found to update");
