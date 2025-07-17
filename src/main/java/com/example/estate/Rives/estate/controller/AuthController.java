@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
     @Autowired
     AuthenticationManager authenticationManager;
     @Autowired
@@ -30,7 +29,6 @@ public class AuthController {
     JwtUtil jwtUtil;
     @Autowired
     PasswordEncoder encoder;
-
     @PostMapping("/signin")
     public String authenticateUser(@RequestBody User user) {
         Authentication authentication = authenticationManager.authenticate(
