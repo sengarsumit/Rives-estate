@@ -28,13 +28,25 @@ public class JwtUtil {
         logger.info("JWT Secret key initialized.");
     }
 
-    public String generateToken(String username,String role) {
-        logger.info("Generating token for user: {},role{}", username,role);
+    // short-period access tokens
+    public String generateAccessToken(String username,String role) {
+        logger.info("Generating access token for user: {},role{}", username,role);
         return Jwts.builder()
                 .setSubject(username)
                 .claim("role",role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 36000000))
+                .setExpiration(new Date(System.currentTimeMillis() + 15*60*1000))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    //long-period refresh tokens
+    public String generateRefreshToken(String username,String role) {
+        logger.info("Generating refresh token for user: {},role{}", username,role);
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis()+7*24*60*60*1000))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -49,6 +61,7 @@ public class JwtUtil {
         logger.info("Extracted username from token: {}", username);
         return username;
     }
+
     public String getRoleFromToken(String token) {
         return Jwts.parser()
                 .setSigningKey(key)

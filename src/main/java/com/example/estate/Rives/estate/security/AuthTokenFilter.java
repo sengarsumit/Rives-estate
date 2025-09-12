@@ -5,6 +5,7 @@ import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,26 +32,28 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private CustomUserDetailsService customUserDetailsService;
-    @Autowired
     private UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String jwt = parseJwt(request);
+            String jwt = parseJwtCookie(request);
             if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
+
                 String username = jwtUtil.getUsernameFromToken(jwt);
-                String role = jwtUtil.getRoleFromToken(jwt);
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
                 User user = userRepository.findByUsername(username);
                 if (user == null) {
                     throw new UsernameNotFoundException("User not found");
                 }
+                String role = jwtUtil.getRoleFromToken(jwt);
+                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(user, null, authorities);
+
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
@@ -59,10 +62,15 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String parseJwt(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7);
+    private String parseJwtCookie(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for(Cookie cookie : request.getCookies())
+            {
+                if("accessToken".equals(cookie.getName()))
+                {
+                    return cookie.getValue();
+                }
+            }
         }
         return null;
     }
