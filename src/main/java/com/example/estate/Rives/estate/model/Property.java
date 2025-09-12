@@ -1,6 +1,7 @@
 package com.example.estate.Rives.estate.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,7 @@ public class Property {
     private Double rental;
 
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<PropertyImage> images = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

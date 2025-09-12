@@ -1,5 +1,6 @@
 package com.example.estate.Rives.estate.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,6 +23,7 @@ public class PropertyImage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "property_id")
+    @JsonBackReference
     private Property property;
 
 }
