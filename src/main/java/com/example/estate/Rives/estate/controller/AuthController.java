@@ -1,5 +1,8 @@
 package com.example.estate.Rives.estate.controller;
 
+import com.example.estate.Rives.estate.DTO.UserLoginDTO;
+import com.example.estate.Rives.estate.DTO.UserRegisterDTO;
+import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
@@ -34,10 +37,13 @@ public class AuthController {
     JwtUtil jwtUtil;
     @Autowired
     PasswordEncoder encoder;
+    @Autowired
+    UserMapper userMapper;
+
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@RequestBody User user, HttpServletResponse httpServletResponse){
+    public ResponseEntity<?> authenticateUser(@RequestBody UserLoginDTO userLoginDTO, HttpServletResponse httpServletResponse){
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
+                new UsernamePasswordAuthenticationToken(userLoginDTO.getUsername(), userLoginDTO.getPassword())
         );
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
@@ -133,21 +139,19 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<String> registerUser(@RequestBody User user) {
-        if (userRepository.existsByUsername(user.getUsername())) {
+    public ResponseEntity<String> registerUser(@RequestBody UserRegisterDTO userRegisterDTO) {
+        if (userRepository.existsByUsername(userRegisterDTO.getUsername())) {
             return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
         }
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (userRepository.existsByEmail(userRegisterDTO.getEmail())) {
             return new ResponseEntity<>("Email is already in use", HttpStatus.CONFLICT);
         }
-        if(user.getRole()==Role.ADMIN){
+        if(userRegisterDTO.getRole()==Role.ADMIN){
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("cannot register as ADMIN");
         }
-        User newUser=new User();
-        newUser.setUsername(user.getUsername());
-        newUser.setEmail(user.getEmail());
-        newUser.setPassword(encoder.encode(user.getPassword()));
-        newUser.setRole(user.getRole());
+        User newUser=userMapper.dtoToUser(userRegisterDTO);
+        newUser.setPassword(encoder.encode(userRegisterDTO.getPassword()));
+        newUser.setRole(userRegisterDTO.getRole()== null ?Role.USER:userRegisterDTO.getRole());
 
         userRepository.save(newUser);
         return new ResponseEntity<>("User registered successfully", HttpStatus.CREATED);

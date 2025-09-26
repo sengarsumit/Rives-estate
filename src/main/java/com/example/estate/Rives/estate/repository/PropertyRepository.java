@@ -2,6 +2,8 @@ package com.example.estate.Rives.estate.repository;
 
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,5 +19,7 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
     boolean existsByTitle(String title);
     Optional<Property> findById(UUID id);
     boolean existsById(UUID id);
+    Page<Property>  findByLocalityContainingIgnoreCase(String locality, Pageable pageable);
+
 }
 

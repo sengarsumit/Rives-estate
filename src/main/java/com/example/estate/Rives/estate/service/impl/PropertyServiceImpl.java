@@ -75,4 +75,8 @@ public class PropertyServiceImpl implements PropertyService {
         Optional<Property> optionalProperty = propertyRepository.findById(id);
         return optionalProperty.orElseThrow(()->new RuntimeException(String.valueOf(new MessageFormat("property not found!"))));
     }
+
+
+
+
 }
