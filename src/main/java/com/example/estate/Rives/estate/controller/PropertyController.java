@@ -1,12 +1,19 @@
 package com.example.estate.Rives.estate.controller;
 
+import com.example.estate.Rives.estate.DTO.PropertyResponseDTO;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.service.ImageService;
 import com.example.estate.Rives.estate.service.PropertyService;
+
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,6 +34,8 @@ public class PropertyController {
     private PropertyService propertyService;
     @Autowired
     private ImageService imageService;
+    @Autowired
+    ModelMapper modelMapper;
 
     @PreAuthorize("hasRole('DEALER')")
     @PostMapping("/create")
@@ -112,5 +121,25 @@ public class PropertyController {
 
         Property updated = propertyService.save(existingProperty);
         return ResponseEntity.ok(updated);
+    }
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/search/locality")
+    public ResponseEntity<Page<PropertyResponseDTO>> searchByLocality(
+            @RequestParam String locality,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ?
+                Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Property> properties = propertyService.searchByLocality(locality, pageable);
+
+        Page<PropertyResponseDTO> dtoPage = properties.map(property ->
+                modelMapper.map(property, PropertyResponseDTO.class));
+
+        return ResponseEntity.ok(dtoPage);
     }
 }

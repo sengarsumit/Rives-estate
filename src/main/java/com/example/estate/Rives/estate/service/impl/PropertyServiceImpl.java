@@ -5,6 +5,8 @@ import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.PropertyRepository;
 import com.example.estate.Rives.estate.service.PropertyService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.text.MessageFormat;
@@ -76,7 +78,13 @@ public class PropertyServiceImpl implements PropertyService {
         return optionalProperty.orElseThrow(()->new RuntimeException(String.valueOf(new MessageFormat("property not found!"))));
     }
 
-
+    @Override
+    public Page<Property> searchByLocality(String locality, Pageable pageable) {
+        if(locality==null||locality.trim().isEmpty()){
+            return propertyRepository.findAll(pageable);
+        };
+        return propertyRepository.findByLocalityContainingIgnoreCase(locality.trim(),pageable);
+    }
 
 
 }
