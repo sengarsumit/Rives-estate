@@ -1,129 +1,182 @@
-Real Estate Rental Backend API
-Welcome to the Real Estate Rental Platform Backend — a robust Spring Boot API designed for property listings, secure user access, and seamless image management. This backend is the foundation for modern real estate rental apps, supporting both dealers (property managers) and renters, with features inspired by real-world scalability and security needs.
+# Rives Estate — Backend API
 
-🚀 Key Features
-🔐 Authentication & Authorization
-Secure JWT-based login and signup
+A Spring Boot REST API for a real-estate rental platform: property listings with
+image uploads, JWT-cookie authentication, and role-based access for renters
+(`USER`) and property managers (`DEALER`), with an `ADMIN` role for user
+administration.
 
-Role-based access: Supports DEALER and USER distinctions
+## 🚀 Features
 
-All critical routes are protected; only authorized users perform sensitive operations
+- **Auth** — signup, signin, refresh, logout, and a `/me` endpoint. JWTs are
+  issued as **httpOnly cookies** (a short-lived access token and a longer-lived
+  refresh token), not `Authorization` headers.
+- **Role-based access** — enforced on the backend with method-level
+  `@PreAuthorize`. Dealers can only modify their own properties.
+- **Property management** — dealers create, update, delete and list their own
+  properties; anyone signed in can browse and search.
+- **Search** — locality search with pagination and validated sorting.
+- **Images** — dealers upload multiple images per property (validated and stored
+  on Cloudinary); metadata is tracked in a `PropertyImage` table, and images are
+  removed from Cloudinary when their property is deleted.
+- **Consistent errors** — a global handler returns a uniform JSON error body with
+  correct HTTP status codes; passwords and tokens are never serialized.
 
-🏠 Property Management
-Dealers can:
+## 🗄️ Tech Stack
 
-Create new property listings
+| Technology | Purpose |
+| --- | --- |
+| Spring Boot 3.5 | Core framework |
+| Spring Security + JJWT | Cookie-based JWT auth & authorization |
+| Spring Data JPA / Hibernate | Persistence (ORM) |
+| MySQL 8 | Relational storage |
+| Cloudinary | Image storage & delivery |
+| ModelMapper | Entity ↔ DTO mapping |
+| Lombok | Boilerplate reduction |
+| Maven | Build & dependency management |
 
-Upload multiple images (securely stored on Cloudinary)
+## 🛠️ Getting Started
 
-Update or delete only their own properties
+### Prerequisites
 
-Users can:
+- **Java 24** — the build targets Java 24 (`<java.version>24</java.version>` in
+  `pom.xml`). On an earlier JDK you can still build/test by overriding the
+  release, e.g. `./mvnw test -Dmaven.compiler.release=21`.
+- **MySQL 8+** running locally, with a database created:
+  `CREATE DATABASE estate;`
+- **Maven** (or use the bundled `./mvnw` wrapper)
+- **Cloudinary account** (for image uploads)
 
-Browse property listings
+### 1. Clone
 
-(Planned) Filter properties by locality or rent
-
-🖼️ Image Handling
-Multiple property images supported via multipart/form-data
-
-Images safely stored on Cloudinary CDN
-
-All image metadata (URL, public_id) tracked in the dedicated PropertyImage table
-
-🗄️ Tech Stack Overview
-Technology	Purpose
-Spring Boot	Core backend framework
-Spring Security + JWT	User authentication & authorization
-MySQL	Relational data storage
-Hibernate (JPA)	Object–Relational Mapping (ORM)
-Cloudinary	Image storage and delivery
-Lombok	Reduces Java boilerplate code
-Maven	Dependency management & builds
-
-
-🛠️ Getting Started
-
-Prerequisites
-Java 17+
-
-MySQL 8+
-
-Maven
-
-Cloudinary account
-
-1. Clone this Repo
-bash
+```bash
 git clone https://github.com/sengarsumit/Rives-estate.git
+cd Rives-estate
+```
 
-2. Configure Your Environment
-Create application.properties under src/main/resources:
+### 2. Configure
 
-text
+Create `src/main/resources/application.properties` (git-ignored — never commit
+real credentials). The application reads these keys:
+
+```properties
+spring.application.name=Rives-estate
+
 # Database
-spring.datasource.url=jdbc:mysql://localhost:3306/realestate
-spring.datasource.username=your_username
-spring.datasource.password=your_password
+spring.datasource.url=jdbc:mysql://localhost:3306/estate
+spring.datasource.username=your_db_user
+spring.datasource.password=your_db_password
+server.port=8081
+spring.jpa.hibernate.ddl-auto=update
 
-# JWT Secret
-jwt.secret=your_jwt_secret
+# JWT signing key (HMAC secret)
+jwt.secret.key=your_long_random_secret
 
 # Cloudinary
-cloudinary.cloud_name=your_cloud_name
-cloudinary.api_key=your_api_key
-cloudinary.api_secret=your_api_secret
-3. Run the Project
-bash
-mvn clean install
-mvn spring-boot:run
-🔑 API Endpoints
-Auth
-Method	Endpoint	Description
-POST	/api/auth/signup	Register new user or dealer
-POST	/api/auth/login	Get JWT with credentials
-Properties
-Method	Endpoint	Description
-POST	/api/properties	Dealer creates a property listing
-POST	/api/properties/{id}/images	Upload multiple images to the property
-GET	/api/properties	View all properties
-PUT	/api/properties/{id}	Dealer updates property
-DELETE	/api/properties/{id}	Dealer deletes property
-🖼️ Image Upload (Sample)
-Form type: multipart/form-data
+cloudinary.cloud-name=your_cloud_name
+cloudinary.api-key=your_api_key
+cloudinary.api-secret=your_api_secret
+```
 
-Key: images
+`ddl-auto=update` means Hibernate creates/updates the schema from the entities on
+startup — no manual migrations.
 
-Value: Upload multiple image files
+### 3. Run
 
-🗃️ Database Schema (Simplified)
+```bash
+./mvnw spring-boot:run        # starts on http://localhost:8081
+./mvnw clean install          # build
+./mvnw test                   # run the test suite
+```
 
-User: id, email, username, password, role
+## 🔐 Authentication model
 
-Property: id, title, description, rental, dealer (owner)
+- `signin` sets two `httpOnly`, `secure`, `SameSite=Lax` cookies: `accessToken`
+  (15 min) and `refreshToken` (7 days). The browser sends them automatically; the
+  frontend uses `withCredentials: true` and never reads the token values.
+- Because cookies are `secure(true)`, auth flows require HTTPS (browsers exempt
+  `localhost` in most cases).
+- Protected requests are authenticated by an `accessToken` **cookie** (not a
+  header). When the access token expires, call `POST /api/auth/refresh`.
+- **CORS** is locked to the Vite dev origin `http://localhost:5173` with
+  credentials allowed — keep this in sync with wherever the frontend is served.
 
-PropertyImage: id, property_id (FK), image_url, public_id (Cloudinary)
+## 🔑 API Endpoints
 
-<img width="876" height="1904" alt="Rives-estate" src="https://github.com/user-attachments/assets/bc07885c-8424-43e7-a5f8-5939823681fd" />
+Base URL: `http://localhost:8081`
 
+### Auth — `/api/auth`
 
-🧪 Testing
-Easily test endpoints using Postman or cURL.
-A sample Postman collection will be added soon!
+| Method | Endpoint | Access | Description |
+| --- | --- | --- | --- |
+| POST | `/api/auth/signup` | Public | Register a `USER` or `DEALER` (`ADMIN` is rejected) → `201` |
+| POST | `/api/auth/signin` | Public | Authenticate; sets `accessToken` + `refreshToken` cookies → `200` |
+| POST | `/api/auth/refresh` | Public (refresh cookie) | Issue a new `accessToken` cookie → `200` |
+| POST | `/api/auth/logout` | Public | Clear both auth cookies → `200` |
+| GET | `/api/auth/me` | Authenticated | Current user (`id, username, email, role`) → `200` |
 
-📦 Future Enhancements
-Advanced search & filter: by locality, rent range
+### Properties — `/properties`
 
-Booking & reservation system for renters
+| Method | Endpoint | Access | Description |
+| --- | --- | --- | --- |
+| POST | `/properties/create` | DEALER | Create a listing (`title`, `address` required) → `201`; duplicate title → `409` |
+| GET | `/properties/all` | Authenticated | List all properties |
+| GET | `/properties/{id}` | Authenticated | Get one property → `404` if missing |
+| GET | `/properties/mine` | DEALER | The caller's own listings |
+| GET | `/properties/search/locality` | Authenticated | Paginated locality search (see params below) |
+| PATCH | `/properties/{id}` | DEALER (owner) | Partial update → `403` non-owner, `404` missing |
+| DELETE | `/properties/delete/{id}` | DEALER (owner) | Delete (also removes its Cloudinary images) |
+| POST | `/properties/{propertyId}/upload-images` | DEALER (owner) | Upload images (`multipart/form-data`) |
 
-Email notifications
+**Search query params** (`/properties/search/locality`):
 
-Admin dashboard for platform management
+| Param | Default | Notes |
+| --- | --- | --- |
+| `locality` | — | Case-insensitive `contains` match; blank returns all |
+| `page` | `0` | Zero-based page index |
+| `size` | `10` | Page size |
+| `sortBy` | `title` | One of `title`, `rental`, `locality` (anything else → `400`) |
+| `sortDir` | `desc` | `asc` or `desc` |
 
-🙌 Contribution
-Open to all contributions — fork, create issues, or submit pull requests!
+Returns a Spring `Page` of `PropertyResponseDTO` (`content`, `totalPages`,
+`totalElements`, `number`, `size`, `first`, `last`).
 
+### Users — `/api/v1/users/`
 
-✉️ Contact
-Sumit Sengar
-📍 Bangalore, India
+| Method | Endpoint | Access | Description |
+| --- | --- | --- | --- |
+| GET | `/api/v1/users/all` | ADMIN | List all users |
+| PATCH | `/api/v1/users/{username}` | Self or ADMIN | Update account (role changes are ADMIN-only) |
+| DELETE | `/api/v1/users/{username}` | Self or ADMIN | Delete account |
+
+## 🖼️ Image Upload
+
+- `Content-Type: multipart/form-data`, one or more parts named **`images`**.
+- Validated on the server: at most **10 files**, **≤ 5 MB** each, and content type
+  must be **JPEG, PNG, WebP or GIF** (checked by MIME type, not file extension).
+  Violations return `400`.
+- The Cloudinary `publicId` is stored per image so it can be deleted later.
+
+## 🗃️ Data Model
+
+- **User** — `id` (UUID), `username` (unique), `email` (unique), `password`
+  (BCrypt, never serialized), `firstName`, `lastName`, `phone`, `role`
+  (`USER` / `DEALER` / `ADMIN`)
+- **Property** — `id` (UUID), `title` (unique), `description`, `address`,
+  `locality`, `rental`, `dealer` (`@ManyToOne` → User), `images`
+  (`@OneToMany` → PropertyImage)
+- **PropertyImage** — `id` (UUID), `imageUrl`, `publicId`, `property`
+  (`@ManyToOne` → Property)
+
+## 🧪 Testing
+
+```bash
+./mvnw test
+```
+
+Most tests are web-layer slices (`@WebMvcTest`) and service unit tests that need
+no database. A single `@SpringBootTest` context-load test requires a running
+MySQL instance (as configured in `application.properties`).
+
+## ✉️ Contact
+
+Sumit Sengar · Bangalore, India
