@@ -39,6 +39,7 @@ public class User implements UserDetails {
     private String username;
 
     @Size(min=8,message = "password must be atleast 8 characters long")
+    @JsonIgnore
     private String password;
 
     private String firstName;
@@ -51,6 +52,8 @@ public class User implements UserDetails {
 
     @OneToMany(mappedBy = "dealer", cascade = CascadeType.ALL,fetch = FetchType.LAZY, orphanRemoval = true)
     @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<Property> properties;
 
 

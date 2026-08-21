@@ -1,14 +1,16 @@
 package com.example.estate.Rives.estate.controller;
 
+import com.example.estate.Rives.estate.DTO.PropertyCreateDTO;
 import com.example.estate.Rives.estate.DTO.PropertyResponseDTO;
-import com.example.estate.Rives.estate.enums.Role;
+import com.example.estate.Rives.estate.DTO.PropertyUpdateDTO;
+import com.example.estate.Rives.estate.DTO.config.PropertyMapper;
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.service.ImageService;
 import com.example.estate.Rives.estate.service.PropertyService;
 
-import org.modelmapper.ModelMapper;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,23 +37,30 @@ public class PropertyController {
     @Autowired
     private ImageService imageService;
     @Autowired
-    ModelMapper modelMapper;
+    private PropertyMapper propertyMapper;
 
     @PreAuthorize("hasRole('DEALER')")
     @PostMapping("/create")
-    public ResponseEntity<?> createProperty(@RequestBody Property property, @AuthenticationPrincipal User loggedInUser) {
+    public ResponseEntity<?> createProperty(@Valid @RequestBody PropertyCreateDTO dto, @AuthenticationPrincipal User loggedInUser) {
 
         if (loggedInUser == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated");
         }
 
-        if (propertyService.isPropertyExistByTitle(property.getTitle())) {
-            return ResponseEntity.badRequest().body("Property already exists with this title");
+        if (propertyService.isPropertyExistByTitle(dto.getTitle())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Property already exists with this title");
         }
 
+        Property property = new Property();
+        property.setTitle(dto.getTitle());
+        property.setDescription(dto.getDescription());
+        property.setAddress(dto.getAddress());
+        property.setLocality(dto.getLocality());
+        property.setRental(dto.getRental());
         property.setDealer(loggedInUser);
+
         Property saved = propertyService.save(property);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PreAuthorize("hasRole('DEALER')")
@@ -60,9 +69,6 @@ public class PropertyController {
                                           @RequestParam("images") List<MultipartFile> images,
                                           @AuthenticationPrincipal User loggedInUser) {
         Property property = propertyService.getPropertyById(propertyId);
-        if (property == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Property not found");
-        }
 
         if (!property.getDealer().getId().equals(loggedInUser.getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the owner dealer can upload images");
@@ -72,7 +78,7 @@ public class PropertyController {
         return ResponseEntity.ok(imageUrls);
     }
 
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
     @GetMapping("/all")
     public ResponseEntity<List<Property>> getAllProperty() {
         return ResponseEntity.ok(propertyService.findAllProperties());
@@ -82,63 +88,58 @@ public class PropertyController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteProperty(@PathVariable UUID id, @AuthenticationPrincipal User loggedInUser) {
         Property existingProperty = propertyService.getPropertyById(id);
-        if (propertyService.isPropertyExist(id) && loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
-            propertyService.delete(existingProperty);
-            return ResponseEntity.ok().body("property deleted");
+        if (!loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only owners can delete properties");
         }
-        return ResponseEntity.badRequest().body("property not found");
+        propertyService.delete(existingProperty);
+        return ResponseEntity.ok().body("property deleted");
     }
 
     @PreAuthorize("hasRole('DEALER')")
     @PatchMapping("/{id}")
     public ResponseEntity<?> updateProperty(@PathVariable UUID id,
-                                            @RequestBody Property propertyUpdates,
+                                            @Valid @RequestBody PropertyUpdateDTO updates,
                                             @AuthenticationPrincipal User loggedInUser) {
-        if (!propertyService.isPropertyExist(id)) {
-            return ResponseEntity.badRequest().body("property not found");
-        }
-
         Property existingProperty = propertyService.getPropertyById(id);
         if (!loggedInUser.getId().equals(existingProperty.getDealer().getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("only owners can update properties");
         }
 
-        if (propertyUpdates.getTitle() != null) {
-            existingProperty.setTitle(propertyUpdates.getTitle());
+        if (updates.getTitle() != null) {
+            existingProperty.setTitle(updates.getTitle());
         }
-        if (propertyUpdates.getDescription() != null) {
-            existingProperty.setDescription(propertyUpdates.getDescription());
+        if (updates.getDescription() != null) {
+            existingProperty.setDescription(updates.getDescription());
         }
-        if (propertyUpdates.getAddress() != null) {
-            existingProperty.setAddress(propertyUpdates.getAddress());
+        if (updates.getAddress() != null) {
+            existingProperty.setAddress(updates.getAddress());
         }
-        if (propertyUpdates.getLocality() != null) {
-            existingProperty.setLocality(propertyUpdates.getLocality());
+        if (updates.getLocality() != null) {
+            existingProperty.setLocality(updates.getLocality());
         }
-        if (propertyUpdates.getRental() != null) {
-            existingProperty.setRental(propertyUpdates.getRental());
+        if (updates.getRental() != null) {
+            existingProperty.setRental(updates.getRental());
         }
 
         Property updated = propertyService.save(existingProperty);
         return ResponseEntity.ok(updated);
     }
-    @PreAuthorize("hasRole('USER')")
+
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
     @GetMapping("/search/locality")
     public ResponseEntity<Page<PropertyResponseDTO>> searchByLocality(
             @RequestParam String locality,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-
             @RequestParam(defaultValue = "desc") String sortDir
     ) {
         Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ?
                 Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "title"));
 
         Page<Property> properties = propertyService.searchByLocality(locality, pageable);
 
-        Page<PropertyResponseDTO> dtoPage = properties.map(property ->
-                modelMapper.map(property, PropertyResponseDTO.class));
+        Page<PropertyResponseDTO> dtoPage = properties.map(propertyMapper::propertyToDto);
 
         return ResponseEntity.ok(dtoPage);
     }

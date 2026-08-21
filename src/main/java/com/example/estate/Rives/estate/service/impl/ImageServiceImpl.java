@@ -2,6 +2,7 @@ package com.example.estate.Rives.estate.service.impl;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.example.estate.Rives.estate.exception.ResourceNotFoundException;
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.PropertyImage;
 import com.example.estate.Rives.estate.repository.PropertyImageRepository;
@@ -35,7 +36,7 @@ public class ImageServiceImpl implements ImageService {
     public List<String> uploadImages(List<MultipartFile> files, UUID propertyId) {
         Optional<Property> optionalProperty = propertyRepository.findById(propertyId);
         if (optionalProperty.isEmpty()) {
-            throw new IllegalArgumentException("Property not found with id: " + propertyId);
+            throw new ResourceNotFoundException("Property not found with id: " + propertyId);
         }
 
         Property property = optionalProperty.get();

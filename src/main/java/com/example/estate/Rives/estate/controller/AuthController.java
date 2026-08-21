@@ -2,6 +2,7 @@ package com.example.estate.Rives.estate.controller;
 
 import com.example.estate.Rives.estate.DTO.UserLoginDTO;
 import com.example.estate.Rives.estate.DTO.UserRegisterDTO;
+import com.example.estate.Rives.estate.DTO.UserResponseDTO;
 import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
@@ -10,17 +11,21 @@ import com.example.estate.Rives.estate.security.JwtUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,7 +46,7 @@ public class AuthController {
     UserMapper userMapper;
 
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@RequestBody UserLoginDTO userLoginDTO, HttpServletResponse httpServletResponse){
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody UserLoginDTO userLoginDTO, HttpServletResponse httpServletResponse){
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(userLoginDTO.getUsername(), userLoginDTO.getPassword())
         );
@@ -128,7 +133,7 @@ public class AuthController {
         ResponseCookie deleteRefresh=ResponseCookie.from("refreshToken","")
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("LAx")
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -139,7 +144,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<String> registerUser(@RequestBody UserRegisterDTO userRegisterDTO) {
+    public ResponseEntity<String> registerUser(@Valid @RequestBody UserRegisterDTO userRegisterDTO) {
         if (userRepository.existsByUsername(userRegisterDTO.getUsername())) {
             return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
         }
@@ -156,5 +161,11 @@ public class AuthController {
         userRepository.save(newUser);
         return new ResponseEntity<>("User registered successfully", HttpStatus.CREATED);
 
+    }
+
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDTO> getCurrentUser(@AuthenticationPrincipal User loggedInUser) {
+        return ResponseEntity.ok(userMapper.userToDto(loggedInUser));
     }
 }

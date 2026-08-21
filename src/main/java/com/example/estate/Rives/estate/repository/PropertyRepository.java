@@ -17,9 +17,5 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
     List<Property> findByLocalityContainingIgnoreCase(String locality);
     List<Property> findByDealer(User dealer);
     boolean existsByTitle(String title);
-    Optional<Property> findById(UUID id);
-    boolean existsById(UUID id);
-    Page<Property>  findByLocalityContainingIgnoreCase(String locality, Pageable pageable);
-
+    Page<Property> findByLocalityContainingIgnoreCase(String locality, Pageable pageable);
 }
-
