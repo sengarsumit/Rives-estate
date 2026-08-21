@@ -303,6 +303,41 @@ class PropertyControllerTest {
     }
 
     @Test
+    void searchByLocality_sortsByWhitelistedField() throws Exception {
+        User caller = user("alice", Role.USER);
+        when(propertyService.searchByLocality(eq("Goa"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/properties/search/locality")
+                        .param("locality", "Goa")
+                        .param("sortBy", "rental")
+                        .param("sortDir", "desc")
+                        .with(authentication(asUser(caller))))
+                .andExpect(status().isOk());
+
+        var pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(propertyService).searchByLocality(eq("Goa"), pageableCaptor.capture());
+
+        Sort.Order order = pageableCaptor.getValue().getSort().getOrderFor("rental");
+        assertThat(order).isNotNull();
+        assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    void searchByLocality_invalidSortField_returns400AndNeverQueries() throws Exception {
+        User caller = user("alice", Role.USER);
+
+        mockMvc.perform(get("/properties/search/locality")
+                        .param("locality", "Goa")
+                        .param("sortBy", "dealer")
+                        .with(authentication(asUser(caller))))
+                .andExpect(status().isBadRequest());
+
+        verify(propertyService, org.mockito.Mockito.never())
+                .searchByLocality(org.mockito.ArgumentMatchers.anyString(), any(Pageable.class));
+    }
+
+    @Test
     void uploadImages_unknownProperty_returns404() throws Exception {
         User dealer = user("dealerbob", Role.DEALER);
         UUID id = UUID.randomUUID();

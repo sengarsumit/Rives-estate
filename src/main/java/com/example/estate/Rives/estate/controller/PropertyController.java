@@ -24,11 +24,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/properties")
 public class PropertyController {
+
+    // Whitelist of Property columns clients may sort search results by. Anything
+    // outside this set is rejected so an arbitrary field name never reaches the DB.
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("title", "rental", "locality");
 
     @Autowired
     UserRepository userRepository;
@@ -143,11 +148,15 @@ public class PropertyController {
             @RequestParam String locality,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "title") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir
     ) {
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new IllegalArgumentException("Invalid sort field. Allowed: " + ALLOWED_SORT_FIELDS);
+        }
         Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ?
                 Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "title"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
 
         Page<Property> properties = propertyService.searchByLocality(locality, pageable);
 
