@@ -8,8 +8,9 @@ import com.example.estate.Rives.estate.exception.ResourceNotFoundException;
 import com.example.estate.Rives.estate.model.Property;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
-import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.JwtUtil;
+import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
+import com.example.estate.Rives.estate.security.WebSecurityConfig;
 import com.example.estate.Rives.estate.service.ImageService;
 import com.example.estate.Rives.estate.service.PropertyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -45,6 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PropertyController.class)
+@Import({WebSecurityConfig.class, AuthEntryPointJwt.class})
 class PropertyControllerTest {
 
     @Autowired
@@ -68,8 +71,7 @@ class PropertyControllerTest {
     @MockBean
     private UserRepository userRepository;
 
-    @MockBean
-    private AuthEntryPointJwt authEntryPointJwt;
+    // AuthEntryPointJwt is intentionally NOT mocked: see UserControllerTest.
 
     private static User user(String username, Role role) {
         User u = new User();
@@ -239,6 +241,45 @@ class PropertyControllerTest {
 
         mockMvc.perform(get("/properties/all").with(authentication(asUser(dealer))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getPropertyById_success_returns200() throws Exception {
+        User dealer = user("dealerbob", Role.DEALER);
+        UUID id = UUID.randomUUID();
+        when(propertyService.getPropertyById(id)).thenReturn(property(id, dealer));
+
+        mockMvc.perform(get("/properties/" + id).with(authentication(asUser(dealer))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getPropertyById_unknownId_returns404() throws Exception {
+        User caller = user("alice", Role.USER);
+        UUID id = UUID.randomUUID();
+        when(propertyService.getPropertyById(id)).thenThrow(new ResourceNotFoundException("Property not found with id: " + id));
+
+        mockMvc.perform(get("/properties/" + id).with(authentication(asUser(caller))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getMyProperties_dealer_returnsOwnListing() throws Exception {
+        User dealer = user("dealerbob", Role.DEALER);
+        when(propertyService.getPropertiesByDealer(dealer)).thenReturn(List.of(property(UUID.randomUUID(), dealer)));
+
+        mockMvc.perform(get("/properties/mine").with(authentication(asUser(dealer))))
+                .andExpect(status().isOk());
+
+        verify(propertyService).getPropertiesByDealer(dealer);
+    }
+
+    @Test
+    void getMyProperties_nonDealer_returns403() throws Exception {
+        User caller = user("alice", Role.USER);
+
+        mockMvc.perform(get("/properties/mine").with(authentication(asUser(caller))))
+                .andExpect(status().isForbidden());
     }
 
     @Test

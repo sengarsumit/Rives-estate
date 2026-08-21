@@ -84,6 +84,18 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.findAllProperties());
     }
 
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
+    @GetMapping("/{id}")
+    public ResponseEntity<Property> getPropertyById(@PathVariable UUID id) {
+        return ResponseEntity.ok(propertyService.getPropertyById(id));
+    }
+
+    @PreAuthorize("hasRole('DEALER')")
+    @GetMapping("/mine")
+    public ResponseEntity<List<Property>> getMyProperties(@AuthenticationPrincipal User loggedInUser) {
+        return ResponseEntity.ok(propertyService.getPropertiesByDealer(loggedInUser));
+    }
+
     @PreAuthorize("hasRole('DEALER')")
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteProperty(@PathVariable UUID id, @AuthenticationPrincipal User loggedInUser) {

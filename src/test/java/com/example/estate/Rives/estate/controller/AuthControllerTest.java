@@ -7,8 +7,8 @@ import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
-import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.JwtUtil;
+import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.WebSecurityConfig;
 import com.example.estate.Rives.estate.service.CustomUserDetailsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import({WebSecurityConfig.class, CustomUserDetailsService.class})
+@Import({WebSecurityConfig.class, CustomUserDetailsService.class, AuthEntryPointJwt.class})
 class AuthControllerTest {
 
     @Autowired
@@ -56,8 +56,7 @@ class AuthControllerTest {
     @MockBean
     private UserMapper userMapper;
 
-    @MockBean
-    private AuthEntryPointJwt authEntryPointJwt;
+    // AuthEntryPointJwt is intentionally NOT mocked: see UserControllerTest.
 
     @Test
     void signin_blankUsername_returns400() throws Exception {

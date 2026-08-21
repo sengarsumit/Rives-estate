@@ -4,14 +4,16 @@ import com.example.estate.Rives.estate.DTO.UpdateUserDTO;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
-import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.JwtUtil;
+import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
+import com.example.estate.Rives.estate.security.WebSecurityConfig;
 import com.example.estate.Rives.estate.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -35,11 +37,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Slice test for authorization/ownership around user delete & update, running
- * against the real WebSecurityConfig (so @PreAuthorize is genuinely enforced).
- * No live DB required: JwtUtil/UserRepository are mocked since Authentication
- * is injected directly per-request, bypassing JWT parsing entirely.
+ * against the real WebSecurityConfig (explicitly @Import-ed - @WebMvcTest's
+ * automatic retention of security @Configuration classes is inconsistent, so
+ * @PreAuthorize is only reliably enforced here because of that explicit
+ * import). No live DB required: JwtUtil/UserRepository are mocked since
+ * Authentication is injected directly per-request, bypassing JWT parsing.
  */
 @WebMvcTest(UserController.class)
+@Import({WebSecurityConfig.class, AuthEntryPointJwt.class})
 class UserControllerTest {
 
     @Autowired
@@ -60,8 +65,10 @@ class UserControllerTest {
     @MockBean
     private UserRepository userRepository;
 
-    @MockBean
-    private AuthEntryPointJwt authEntryPointJwt;
+    // AuthEntryPointJwt is intentionally NOT mocked: it's what actually writes
+    // the 401 status for unauthenticated requests. A Mockito no-op mock here
+    // would silently swallow that write and leave the response at 200 - it
+    // has zero dependencies, so using the real bean is free.
 
     private static User user(String username, Role role) {
         User u = new User();
