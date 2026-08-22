@@ -35,5 +35,7 @@ build/
 ### VS Code ###
 .vscode/
 /src/main/resources/application.properties
-/.mvn/wrapper/maven-wrapper.properties
 /src/main/java/com/example/estate/Rives/estate/AdminSeeder.java
+
+### Docker Compose secrets ###
+.env

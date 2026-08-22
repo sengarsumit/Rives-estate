@@ -2,6 +2,7 @@ package com.example.estate.Rives.estate.security;
 
 import com.example.estate.Rives.estate.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,9 +26,11 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig {
 
-    // Shared with WebSocketConfig's STOMP endpoint so the allowed origin is
-    // only defined once.
-    public static final String FRONTEND_ORIGIN = "http://localhost:5173";
+    // Also read directly by WebSocketConfig for the STOMP endpoint's allowed
+    // origin - same property key, deliberately not shared via a Java
+    // constant, since @Value needs an instance-bound field either way.
+    @Value("${app.frontend-origin}")
+    private String frontendOrigin;
 
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
@@ -81,7 +84,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(FRONTEND_ORIGIN));
+        configuration.setAllowedOrigins(List.of(frontendOrigin));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

@@ -2,6 +2,7 @@ package com.example.estate.Rives.estate.security;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -11,7 +12,12 @@ class WebSecurityConfigTest {
 
     @Test
     void corsConfiguration_allowsAllStandardRestMethodsIncludingPatch() {
-        CorsConfigurationSource source = new WebSecurityConfig().corsConfigurationSource();
+        WebSecurityConfig config = new WebSecurityConfig();
+        // frontendOrigin is normally @Value-injected by Spring; set it
+        // directly since this test constructs the config outside a context.
+        ReflectionTestUtils.setField(config, "frontendOrigin", "http://localhost:5173");
+
+        CorsConfigurationSource source = config.corsConfigurationSource();
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/properties/some-id");
 

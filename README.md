@@ -28,7 +28,7 @@ administration.
 | Spring Boot 3.5 | Core framework |
 | Spring Security + JJWT | Cookie-based JWT auth & authorization |
 | Spring Data JPA / Hibernate | Persistence (ORM) |
-| MySQL 8 | Relational storage |
+| PostgreSQL | Relational storage |
 | Cloudinary | Image storage & delivery |
 | ModelMapper | Entity ↔ DTO mapping |
 | Lombok | Boilerplate reduction |
@@ -41,8 +41,9 @@ administration.
 - **Java 24** — the build targets Java 24 (`<java.version>24</java.version>` in
   `pom.xml`). On an earlier JDK you can still build/test by overriding the
   release, e.g. `./mvnw test -Dmaven.compiler.release=21`.
-- **MySQL 8+** running locally, with a database created:
-  `CREATE DATABASE estate;`
+- **PostgreSQL** running locally, with a database created:
+  `CREATE DATABASE estate;` — or skip installing it and use `docker compose up db`
+  (see [Docker](#-docker) below).
 - **Maven** (or use the bundled `./mvnw` wrapper)
 - **Cloudinary account** (for image uploads)
 
@@ -62,19 +63,22 @@ real credentials). The application reads these keys:
 spring.application.name=Rives-estate
 
 # Database
-spring.datasource.url=jdbc:mysql://localhost:3306/estate
+spring.datasource.url=jdbc:postgresql://localhost:5432/estate
 spring.datasource.username=your_db_user
 spring.datasource.password=your_db_password
 server.port=8081
 spring.jpa.hibernate.ddl-auto=update
 
-# JWT signing key (HMAC secret)
+# JWT signing key (HMAC secret, at least 256 bits / 32 characters for HS256)
 jwt.secret.key=your_long_random_secret
 
 # Cloudinary
 cloudinary.cloud-name=your_cloud_name
 cloudinary.api-key=your_api_key
 cloudinary.api-secret=your_api_secret
+
+# CORS + WebSocket allowed origin - wherever the frontend is served from
+app.frontend-origin=http://localhost:5173
 ```
 
 `ddl-auto=update` means Hibernate creates/updates the schema from the entities on
@@ -87,6 +91,22 @@ startup — no manual migrations.
 ./mvnw clean install          # build
 ./mvnw test                   # run the test suite
 ```
+
+## 🐳 Docker
+
+A root `Dockerfile` (multi-stage: Maven build, then a slim JRE runtime) and
+`docker-compose.yml` (Postgres + the backend) let you skip installing Postgres
+and Java locally:
+
+```bash
+cp .env.example .env    # fill in real values - .env is git-ignored
+docker compose up       # Postgres on :5432, backend on :8081
+```
+
+`docker compose up db` starts just Postgres, if you'd rather run the backend
+itself with `./mvnw spring-boot:run` for faster iteration. See `.env.example`
+for every variable the compose file expects (DB credentials, JWT secret,
+Cloudinary credentials, and the frontend's origin for CORS/WebSocket).
 
 ## 🔐 Authentication model
 
@@ -174,8 +194,10 @@ Returns a Spring `Page` of `PropertyResponseDTO` (`content`, `totalPages`,
 ```
 
 Most tests are web-layer slices (`@WebMvcTest`) and service unit tests that need
-no database. A single `@SpringBootTest` context-load test requires a running
-MySQL instance (as configured in `application.properties`).
+no database; repository tests use an in-memory H2 database. A few
+`@SpringBootTest` integration tests (context load, method-security enforcement,
+the auth refresh-token flow) run against a real Postgres instance, as
+configured in `application.properties`.
 
 ## ✉️ Contact
 

@@ -22,6 +22,10 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
+// "user" is a reserved word in Postgres (and the SQL standard) - MySQL
+// tolerated it unquoted, Postgres won't without every query quoting it.
+// Naming the table explicitly sidesteps that everywhere at once.
+@Table(name = "users")
 public class User implements UserDetails {
 
 

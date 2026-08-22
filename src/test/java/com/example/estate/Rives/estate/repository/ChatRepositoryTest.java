@@ -28,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @Import(JpaAuditingConfig.class)
 @TestPropertySource(properties = {
-        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-        "spring.jpa.properties.hibernate.globally_quoted_identifiers=true"
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
 })
 class ChatRepositoryTest {
 

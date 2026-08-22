@@ -24,10 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @Import(JpaAuditingConfig.class)
 @TestPropertySource(properties = {
-        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-        // H2 treats USER as a reserved keyword (it's a built-in function); MySQL does not.
-        // Quoting every identifier sidesteps the collision without touching the entity mapping.
-        "spring.jpa.properties.hibernate.globally_quoted_identifiers=true"
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
 })
 class PropertyRepositoryTest {
 
