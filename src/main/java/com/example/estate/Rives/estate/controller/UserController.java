@@ -1,6 +1,7 @@
 package com.example.estate.Rives.estate.controller;
 
 import com.example.estate.Rives.estate.DTO.UpdateUserDTO;
+import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.service.UserService;
@@ -21,6 +22,7 @@ public class UserController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
     @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
     @DeleteMapping("/{username}")
@@ -76,7 +78,7 @@ public class UserController {
         }
 
         userService.updateUser(user);
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(userMapper.userToDto(user));
     }
 
     @PreAuthorize("hasRole('ADMIN')")

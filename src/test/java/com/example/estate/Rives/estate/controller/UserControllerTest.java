@@ -1,6 +1,8 @@
 package com.example.estate.Rives.estate.controller;
 
 import com.example.estate.Rives.estate.DTO.UpdateUserDTO;
+import com.example.estate.Rives.estate.DTO.UserResponseDTO;
+import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
@@ -33,6 +35,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -64,6 +67,9 @@ class UserControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+
+    @MockBean
+    private UserMapper userMapper;
 
     // AuthEntryPointJwt is intentionally NOT mocked: it's what actually writes
     // the 401 status for unauthenticated requests. A Mockito no-op mock here
@@ -227,6 +233,33 @@ class UserControllerTest {
                 .andExpect(status().isOk());
 
         verify(userService).updateUser(argThat(u -> u.getRole() == Role.DEALER));
+    }
+
+    @Test
+    void updateUser_success_returnsUserResponseDtoWithoutPassword() throws Exception {
+        User alice = user("alice", Role.USER);
+        alice.setFirstName("Alicia");
+        when(userService.getUserByUsername("alice")).thenReturn(alice);
+
+        UserResponseDTO responseDto = new UserResponseDTO();
+        responseDto.setId(alice.getId());
+        responseDto.setUsername("alice");
+        responseDto.setEmail(alice.getEmail());
+        responseDto.setRole(Role.USER);
+        responseDto.setFirstName("Alicia");
+        when(userMapper.userToDto(alice)).thenReturn(responseDto);
+
+        UpdateUserDTO dto = new UpdateUserDTO();
+        dto.setFirstName("Alicia");
+
+        mockMvc.perform(patch("/api/v1/users/alice")
+                        .with(csrf())
+                        .with(authentication(asUser(alice)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Alicia"))
+                .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test
