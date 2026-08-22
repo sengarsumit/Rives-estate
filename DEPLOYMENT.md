@@ -74,9 +74,25 @@ to set up.
 2. Import the `rives-frontend` GitHub repo.
 3. **Root directory**: `rives-frontend` — the actual project lives one
    level below the repo root (`Rives-frontend/rives-frontend/` locally).
-4. Environment variable: `VITE_API_BASE_URL` = your Render URL from step 2
-   (no trailing slash).
-5. Deploy. Vercel gives you `https://<project>.vercel.app`.
+4. `rives-frontend/vercel.json` proxies REST calls (`/api/**`,
+   `/properties/**`, `/conversations/**`) to the Render backend so they're
+   same-origin from the browser's point of view — **required**: without it,
+   the auth cookie is third-party (Vercel and Render are different sites),
+   and modern browsers increasingly block third-party cookies by default,
+   silently breaking login even though the request itself succeeds. If your
+   Render URL differs from `https://rives-estate.onrender.com`, edit the
+   `destination` values in `vercel.json` to match — Vercel rewrites can't
+   read environment variables, so this has to be a literal URL in the file.
+5. Environment variables:
+   - `VITE_API_BASE_URL` — **leave empty/unset**. REST calls go to the
+     frontend's own origin, which step 4's rewrites proxy to Render.
+   - `VITE_WS_BASE_URL` = your Render URL from step 2 (no trailing slash).
+     The WebSocket chat connection can't go through the Vercel proxy (it
+     doesn't proxy WebSocket upgrades to an external origin), so it still
+     connects directly to Render and authenticates with a short-lived ticket
+     fetched over the (proxied) REST API instead of a cookie — see
+     `WsTicketService` in the backend.
+6. Deploy. Vercel gives you `https://<project>.vercel.app`.
 
 ## 4. Close the loop: point the backend at the real frontend origin
 

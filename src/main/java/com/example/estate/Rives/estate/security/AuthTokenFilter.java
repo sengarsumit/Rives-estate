@@ -34,32 +34,47 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private WsTicketService wsTicketService;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
             String jwt = parseJwtCookie(request);
             if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
-
                 String username = jwtUtil.getUsernameFromToken(jwt);
                 User user = userRepository.findByUsername(username);
                 if (user == null) {
                     throw new UsernameNotFoundException("User not found");
                 }
-                String role = jwtUtil.getRoleFromToken(jwt);
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(user, null, authorities);
-
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                authenticate(user, jwtUtil.getRoleFromToken(jwt), request);
+            } else if (isWebSocketHandshake(request)) {
+                // The /ws handshake connects directly to this server (not through
+                // the frontend's same-origin proxy), so it never carries the
+                // now-host-only auth cookie. See WsTicketService for why.
+                String username = wsTicketService.consume(request.getParameter("ticket"));
+                User user = username == null ? null : userRepository.findByUsername(username);
+                if (user != null) {
+                    authenticate(user, user.getRole().toString(), request);
+                }
             }
         } catch (Exception e) {
             logger.warn("Cannot set user authentication: {}", e.getMessage());
         }
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isWebSocketHandshake(HttpServletRequest request) {
+        return "/ws".equals(request.getRequestURI());
+    }
+
+    private void authenticate(User user, String role, HttpServletRequest request) {
+        var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(user, null, authorities);
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     private String parseJwtCookie(HttpServletRequest request) {

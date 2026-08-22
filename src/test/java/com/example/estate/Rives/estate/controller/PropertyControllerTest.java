@@ -11,6 +11,7 @@ import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.JwtUtil;
 import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.WebSecurityConfig;
+import com.example.estate.Rives.estate.security.WsTicketService;
 import com.example.estate.Rives.estate.service.ImageService;
 import com.example.estate.Rives.estate.service.PropertyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,6 +71,9 @@ class PropertyControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+
+    @MockBean
+    private WsTicketService wsTicketService;
 
     // AuthEntryPointJwt is intentionally NOT mocked: see UserControllerTest.
 

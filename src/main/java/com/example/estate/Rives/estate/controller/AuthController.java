@@ -9,6 +9,7 @@ import com.example.estate.Rives.estate.exception.ApiException;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.JwtUtil;
+import com.example.estate.Rives.estate.security.WsTicketService;
 import com.example.estate.Rives.estate.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +49,8 @@ public class AuthController {
     UserMapper userMapper;
     @Autowired
     RefreshTokenService refreshTokenService;
+    @Autowired
+    WsTicketService wsTicketService;
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody UserLoginDTO userLoginDTO, HttpServletResponse httpServletResponse){
@@ -167,5 +170,13 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getCurrentUser(@AuthenticationPrincipal User loggedInUser) {
         return ResponseEntity.ok(userMapper.userToDto(loggedInUser));
+    }
+
+    // Consumed by the frontend immediately before opening the /ws STOMP
+    // connection - see WsTicketService for why cookie auth can't reach it.
+    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
+    @PostMapping("/ws-ticket")
+    public ResponseEntity<String> issueWsTicket(@AuthenticationPrincipal User loggedInUser) {
+        return ResponseEntity.ok(wsTicketService.issue(loggedInUser));
     }
 }

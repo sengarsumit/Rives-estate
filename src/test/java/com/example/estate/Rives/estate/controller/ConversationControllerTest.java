@@ -15,6 +15,7 @@ import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.JwtUtil;
 import com.example.estate.Rives.estate.security.WebSecurityConfig;
+import com.example.estate.Rives.estate.security.WsTicketService;
 import com.example.estate.Rives.estate.service.ChatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,9 @@ class ConversationControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+
+    @MockBean
+    private WsTicketService wsTicketService;
 
     private static User user(String username, Role role) {
         User u = new User();

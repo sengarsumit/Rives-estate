@@ -9,6 +9,7 @@ import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.JwtUtil;
 import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.WebSecurityConfig;
+import com.example.estate.Rives.estate.security.WsTicketService;
 import com.example.estate.Rives.estate.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,9 @@ class UserControllerTest {
 
     @MockBean
     private UserMapper userMapper;
+
+    @MockBean
+    private WsTicketService wsTicketService;
 
     // AuthEntryPointJwt is intentionally NOT mocked: it's what actually writes
     // the 401 status for unauthenticated requests. A Mockito no-op mock here

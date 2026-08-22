@@ -11,6 +11,7 @@ import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.JwtUtil;
 import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.WebSecurityConfig;
+import com.example.estate.Rives.estate.security.WsTicketService;
 import com.example.estate.Rives.estate.service.CustomUserDetailsService;
 import com.example.estate.Rives.estate.service.RefreshTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,6 +68,9 @@ class AuthControllerTest {
 
     @MockBean
     private RefreshTokenService refreshTokenService;
+
+    @MockBean
+    private WsTicketService wsTicketService;
 
     // AuthEntryPointJwt is intentionally NOT mocked: see UserControllerTest.
 
@@ -273,5 +277,30 @@ class AuthControllerTest {
                 .andExpect(status().isOk());
 
         verify(refreshTokenService, never()).revoke(any());
+    }
+
+    // ---- POST /api/auth/ws-ticket ----
+
+    @Test
+    void wsTicket_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(post("/api/auth/ws-ticket").with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void wsTicket_authenticated_returnsIssuedTicket() throws Exception {
+        User alice = new User();
+        alice.setId(UUID.randomUUID());
+        alice.setUsername("alice");
+        alice.setRole(Role.USER);
+
+        when(wsTicketService.issue(alice)).thenReturn("a-fresh-ticket");
+
+        var authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        var auth = new UsernamePasswordAuthenticationToken(alice, null, authorities);
+
+        mockMvc.perform(post("/api/auth/ws-ticket").with(csrf()).with(authentication(auth)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("a-fresh-ticket"));
     }
 }
