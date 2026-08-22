@@ -33,7 +33,8 @@ public class PropertyController {
 
     // Whitelist of Property columns clients may sort search results by. Anything
     // outside this set is rejected so an arbitrary field name never reaches the DB.
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("title", "rental", "locality");
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of("title", "rental", "locality", "createdAt", "updatedAt");
 
     @Autowired
     UserRepository userRepository;
@@ -148,7 +149,7 @@ public class PropertyController {
             @RequestParam String locality,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "title") String sortBy,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir
     ) {
         if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {

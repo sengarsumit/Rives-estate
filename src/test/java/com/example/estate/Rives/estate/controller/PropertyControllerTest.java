@@ -290,6 +290,7 @@ class PropertyControllerTest {
 
         mockMvc.perform(get("/properties/search/locality")
                         .param("locality", "Goa")
+                        .param("sortBy", "title")
                         .param("sortDir", "asc")
                         .with(authentication(asUser(caller))))
                 .andExpect(status().isOk());
@@ -300,6 +301,26 @@ class PropertyControllerTest {
         Sort.Order order = pageableCaptor.getValue().getSort().getOrderFor("title");
         assertThat(order).isNotNull();
         assertThat(order.getDirection()).isEqualTo(Sort.Direction.ASC);
+    }
+
+    @Test
+    void searchByLocality_defaultSort_isCreatedAtDescending() throws Exception {
+        User caller = user("alice", Role.USER);
+        when(propertyService.searchByLocality(eq("Goa"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        // No sortBy/sortDir supplied - should default to newest-first.
+        mockMvc.perform(get("/properties/search/locality")
+                        .param("locality", "Goa")
+                        .with(authentication(asUser(caller))))
+                .andExpect(status().isOk());
+
+        var pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(propertyService).searchByLocality(eq("Goa"), pageableCaptor.capture());
+
+        Sort.Order order = pageableCaptor.getValue().getSort().getOrderFor("createdAt");
+        assertThat(order).isNotNull();
+        assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
     }
 
     @Test
