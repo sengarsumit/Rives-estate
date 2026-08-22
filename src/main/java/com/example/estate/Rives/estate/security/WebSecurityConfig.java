@@ -25,6 +25,10 @@ import java.util.List;
 @EnableMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig {
 
+    // Shared with WebSocketConfig's STOMP endpoint so the allowed origin is
+    // only defined once.
+    public static final String FRONTEND_ORIGIN = "http://localhost:5173";
+
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
 
@@ -73,7 +77,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of(FRONTEND_ORIGIN));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
