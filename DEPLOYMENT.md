@@ -47,6 +47,11 @@ to set up.
      `SPRING_DATASOURCE_PASSWORD` — from step 1
    - `JWT_SECRET_KEY` — `openssl rand -base64 32`
    - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+   - `SPRING_JPA_HIBERNATE_DDL_AUTO` = `update` — **required**. Spring Boot's
+     default is `none` for a non-embedded database, which boots cleanly but
+     creates zero tables — every request then 500s with no obvious startup
+     error. `application.properties` sets this locally, but it's git-ignored
+     so it never reaches Render's build; this env var is what makes it apply.
    - `APP_FRONTEND_ORIGIN` — leave as `http://localhost:5173` for now,
      you'll come back and fix this in step 4
    - `SERVER_PORT` = `10000` — **required**. Render always injects its own

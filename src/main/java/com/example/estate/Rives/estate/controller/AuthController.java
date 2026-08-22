@@ -119,10 +119,13 @@ public class AuthController {
     }
 
     private ResponseCookie buildCookie(String name, String value, long maxAgeMillis) {
+        // SameSite=None: frontend (Vercel) and backend (Render) are different
+        // sites, so the auth cookie must be sent on cross-site requests. This
+        // requires Secure, which is already set.
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("Lax")
+                .sameSite("None")
                 .path("/")
                 .maxAge(maxAgeMillis / 1000)
                 .build();
