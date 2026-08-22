@@ -244,6 +244,55 @@ class PropertyControllerTest {
     }
 
     @Test
+    void getAllProperty_anonymous_returns200() throws Exception {
+        when(propertyService.findAllProperties()).thenReturn(List.of());
+
+        mockMvc.perform(get("/properties/all"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void searchByLocality_anonymous_returns200() throws Exception {
+        when(propertyService.searchByLocality(eq("Goa"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/properties/search/locality").param("locality", "Goa"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getPropertyById_anonymous_returns200() throws Exception {
+        User dealer = user("dealerbob", Role.DEALER);
+        UUID id = UUID.randomUUID();
+        when(propertyService.getPropertyById(id)).thenReturn(property(id, dealer));
+
+        mockMvc.perform(get("/properties/" + id))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getMyProperties_anonymous_returns401() throws Exception {
+        // Guards the {id:<uuid>} matcher in WebSecurityConfig staying scoped to
+        // UUID-shaped segments only - a looser pattern could accidentally permit
+        // this literal sibling path too.
+        mockMvc.perform(get("/properties/mine"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void createProperty_anonymous_returns401() throws Exception {
+        PropertyCreateDTO dto = new PropertyCreateDTO();
+        dto.setTitle("Sea View Villa");
+        dto.setAddress("123 Beach Rd");
+
+        mockMvc.perform(post("/properties/create")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void getPropertyById_success_returns200() throws Exception {
         User dealer = user("dealerbob", Role.DEALER);
         UUID id = UUID.randomUUID();

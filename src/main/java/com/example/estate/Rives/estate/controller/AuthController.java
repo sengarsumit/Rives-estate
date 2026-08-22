@@ -5,6 +5,7 @@ import com.example.estate.Rives.estate.DTO.UserRegisterDTO;
 import com.example.estate.Rives.estate.DTO.UserResponseDTO;
 import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
+import com.example.estate.Rives.estate.exception.ApiException;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.JwtUtil;
@@ -146,13 +147,13 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<String> registerUser(@Valid @RequestBody UserRegisterDTO userRegisterDTO) {
         if (userRepository.existsByUsername(userRegisterDTO.getUsername())) {
-            return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
+            throw new ApiException(HttpStatus.CONFLICT, "Username is already in use");
         }
         if (userRepository.existsByEmail(userRegisterDTO.getEmail())) {
-            return new ResponseEntity<>("Email is already in use", HttpStatus.CONFLICT);
+            throw new ApiException(HttpStatus.CONFLICT, "Email is already in use");
         }
         if(userRegisterDTO.getRole()==Role.ADMIN){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("cannot register as ADMIN");
+            throw new ApiException(HttpStatus.FORBIDDEN, "cannot register as ADMIN");
         }
         User newUser=userMapper.dtoToUser(userRegisterDTO);
         newUser.setPassword(encoder.encode(userRegisterDTO.getPassword()));

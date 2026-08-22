@@ -32,6 +32,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
@@ -104,7 +105,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void signup_duplicateUsername_returns409() throws Exception {
+    void signup_duplicateUsername_returns409WithSpecificMessage() throws Exception {
         UserRegisterDTO dto = new UserRegisterDTO();
         dto.setUsername("alice");
         dto.setEmail("alice@example.com");
@@ -117,7 +118,44 @@ class AuthControllerTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Username is already in use"))
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void signup_duplicateEmail_returns409WithSpecificMessage() throws Exception {
+        UserRegisterDTO dto = new UserRegisterDTO();
+        dto.setUsername("bob");
+        dto.setEmail("alice@example.com");
+        dto.setPassword("password123");
+        dto.setRole(Role.USER);
+
+        when(userRepository.existsByUsername("bob")).thenReturn(false);
+        when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Email is already in use"));
+    }
+
+    @Test
+    void signup_adminRole_returns403WithSpecificMessage() throws Exception {
+        UserRegisterDTO dto = new UserRegisterDTO();
+        dto.setUsername("wannabeadmin");
+        dto.setEmail("wannabeadmin@example.com");
+        dto.setPassword("password123");
+        dto.setRole(Role.ADMIN);
+
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("cannot register as ADMIN"));
     }
 
     @Test

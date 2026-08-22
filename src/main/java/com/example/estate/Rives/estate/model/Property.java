@@ -47,7 +47,7 @@ public class Property {
     private List<PropertyImage> images = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dealer_id")
+    @JoinColumn(name = "dealer_id", nullable = false)
     @JsonIgnoreProperties({"properties", "hibernateLazyInitializer", "handler"})
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

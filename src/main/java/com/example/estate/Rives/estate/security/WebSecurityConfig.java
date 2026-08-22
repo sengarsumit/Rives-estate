@@ -4,6 +4,7 @@ import com.example.estate.Rives.estate.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -53,6 +54,15 @@ public class WebSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Browsing is public (see Home page copy: "Free to browse"). The
+                        // {id} pattern is constrained to a UUID shape so it can't also
+                        // match literal sibling paths like /properties/mine or
+                        // /properties/create, which must stay behind auth.
+                        .requestMatchers(HttpMethod.GET,
+                                "/properties/all",
+                                "/properties/search/locality",
+                                "/properties/{id:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}"
+                        ).permitAll()
                         .anyRequest().authenticated()
 
                 );

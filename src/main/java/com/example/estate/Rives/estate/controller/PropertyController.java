@@ -84,13 +84,13 @@ public class PropertyController {
         return ResponseEntity.ok(imageUrls);
     }
 
-    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
+    // Public: browsing is open to anonymous visitors (see WebSecurityConfig).
     @GetMapping("/all")
     public ResponseEntity<List<Property>> getAllProperty() {
         return ResponseEntity.ok(propertyService.findAllProperties());
     }
 
-    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
+    // Public: browsing is open to anonymous visitors (see WebSecurityConfig).
     @GetMapping("/{id}")
     public ResponseEntity<Property> getPropertyById(@PathVariable UUID id) {
         return ResponseEntity.ok(propertyService.getPropertyById(id));
@@ -143,7 +143,7 @@ public class PropertyController {
         return ResponseEntity.ok(updated);
     }
 
-    @PreAuthorize("hasAnyRole('USER','DEALER','ADMIN')")
+    // Public: browsing is open to anonymous visitors (see WebSecurityConfig).
     @GetMapping("/search/locality")
     public ResponseEntity<Page<PropertyResponseDTO>> searchByLocality(
             @RequestParam String locality,
