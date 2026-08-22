@@ -5,18 +5,22 @@ import com.example.estate.Rives.estate.DTO.UserRegisterDTO;
 import com.example.estate.Rives.estate.DTO.UserResponseDTO;
 import com.example.estate.Rives.estate.DTO.config.UserMapper;
 import com.example.estate.Rives.estate.enums.Role;
+import com.example.estate.Rives.estate.exception.ApiException;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.security.JwtUtil;
 import com.example.estate.Rives.estate.security.AuthEntryPointJwt;
 import com.example.estate.Rives.estate.security.WebSecurityConfig;
 import com.example.estate.Rives.estate.service.CustomUserDetailsService;
+import com.example.estate.Rives.estate.service.RefreshTokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,11 +30,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,6 +64,9 @@ class AuthControllerTest {
 
     @MockBean
     private UserMapper userMapper;
+
+    @MockBean
+    private RefreshTokenService refreshTokenService;
 
     // AuthEntryPointJwt is intentionally NOT mocked: see UserControllerTest.
 
@@ -186,5 +197,81 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/auth/me").with(authentication(auth)))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(responseDto)));
+    }
+
+    // ---- POST /api/auth/refresh ----
+
+    @Test
+    void refresh_noCookie_returns401AndNeverConsultsTheService() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh").with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verify(refreshTokenService, never()).rotate(any());
+    }
+
+    @Test
+    void refresh_signatureInvalid_returns401WithoutConsultingTheService() throws Exception {
+        when(jwtUtil.validateJwtToken("bad-token")).thenReturn(false);
+
+        mockMvc.perform(post("/api/auth/refresh").with(csrf())
+                        .cookie(new Cookie("refreshToken", "bad-token")))
+                .andExpect(status().isUnauthorized());
+
+        verify(refreshTokenService, never()).rotate(any());
+    }
+
+    @Test
+    void refresh_reusedOrUnknownToken_returns401AndClearsCookies() throws Exception {
+        when(jwtUtil.validateJwtToken("stale-token")).thenReturn(true);
+        when(refreshTokenService.rotate("stale-token"))
+                .thenThrow(new ApiException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+
+        mockMvc.perform(post("/api/auth/refresh").with(csrf())
+                        .cookie(new Cookie("refreshToken", "stale-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(cookie().maxAge("accessToken", 0))
+                .andExpect(cookie().maxAge("refreshToken", 0));
+    }
+
+    @Test
+    void refresh_validToken_rotatesAndSetsNewCookiesForBothTokens() throws Exception {
+        User alice = new User();
+        alice.setId(UUID.randomUUID());
+        alice.setUsername("alice");
+        alice.setRole(Role.USER);
+
+        when(jwtUtil.validateJwtToken("old-refresh-token")).thenReturn(true);
+        when(refreshTokenService.rotate("old-refresh-token")).thenReturn(alice);
+        when(jwtUtil.generateAccessToken("alice", "USER")).thenReturn("new-access-token");
+        when(jwtUtil.generateRefreshToken("alice", "USER")).thenReturn("new-refresh-token");
+
+        mockMvc.perform(post("/api/auth/refresh").with(csrf())
+                        .cookie(new Cookie("refreshToken", "old-refresh-token")))
+                .andExpect(status().isOk())
+                .andExpect(cookie().value("accessToken", "new-access-token"))
+                .andExpect(cookie().value("refreshToken", "new-refresh-token"));
+
+        verify(refreshTokenService).issue(alice, "new-refresh-token");
+    }
+
+    // ---- POST /api/auth/logout ----
+
+    @Test
+    void logout_withRefreshCookie_revokesItServerSideAndClearsCookies() throws Exception {
+        mockMvc.perform(post("/api/auth/logout").with(csrf())
+                        .cookie(new Cookie("refreshToken", "some-token")))
+                .andExpect(status().isOk())
+                .andExpect(cookie().maxAge("accessToken", 0))
+                .andExpect(cookie().maxAge("refreshToken", 0));
+
+        verify(refreshTokenService).revoke("some-token");
+    }
+
+    @Test
+    void logout_withoutRefreshCookie_stillSucceedsWithoutConsultingTheService() throws Exception {
+        mockMvc.perform(post("/api/auth/logout").with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(refreshTokenService, never()).revoke(any());
     }
 }
