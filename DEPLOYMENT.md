@@ -1,90 +1,84 @@
 # Deployment
 
-Backend + database run together on one VM via Docker Compose. Frontend
-deploys separately as a static site (Vercel or similar). This is a runbook
-for account-creation/dashboard steps you do yourself — Claude can prepare
+Backend on Render, database on Neon, frontend on Vercel — all three have
+genuinely free tiers with **no credit card required**. This is a runbook for
+the account-creation/dashboard steps you do yourself — Claude can prepare
 code but can't create accounts or enter payment details on your behalf.
 
-## Why a VM, not a PaaS, for the backend
+## Why this combination
 
-Most free-tier PaaS web services (Render, etc.) don't give free tiers a
-persistent disk — a database living in the same container would lose all
-its data on every restart. A real VM's disk is just... a real disk, so
-Postgres and the backend can share one host and actually keep their data.
-[Oracle Cloud's Always Free tier](https://www.oracle.com/cloud/free/) is a
-solid choice: genuinely free forever (not a trial), a real Arm VM (up to 4
-OCPUs / 24GB RAM split across instances), full Docker support. A card is
-required for identity verification but nothing is charged while you stay
-within Always Free limits. Any VM with Docker works identically, though —
-these steps aren't Oracle-specific.
+Render's free web services have no persistent disk, so a database living in
+the *same* free container would lose all its data on every restart —
+that's why the database is a separate service (Neon), not something baked
+into the backend's own container. Neon's free Postgres is a permanent tier
+(not a trial) that self-heals: it scales to zero after 5 minutes idle and
+wakes itself automatically on the next query, no dashboard visit required.
+Render's free web service does the same thing — spins down after 15 minutes
+with no traffic, 30–60s cold start on the next request. Neither is
+production-grade, both are fine for a personal/portfolio project.
 
-## 1. Provision a VM
+Render gives you HTTPS automatically on its own `*.onrender.com` domain, so
+unlike a self-managed VM, there's no reverse proxy or certificate handling
+to set up.
 
-Whichever provider you use, you need:
+## 1. Database: Neon
 
-- A VM with **Docker and Docker Compose installed** (`docker --version`,
-  `docker compose version` should both work over SSH).
-- A firewall/security-list rule opening **ports 22 (SSH), 80, and 443**.
-  Do **not** open port 5432 (Postgres) or, once Caddy is running, 8081 —
-  neither needs to be reachable from the internet; the backend and Postgres
-  talk to each other over Docker's internal network.
-- A **domain name pointing at the VM's IP** (an A record). TLS is not
-  optional here: the app's auth cookies are `Secure` (see
-  `AuthController`), so the browser won't send them back over plain HTTP —
-  login/refresh/logout simply won't work without HTTPS. A free subdomain
-  (e.g. from a dynamic-DNS provider) works fine if you don't own a domain.
+1. Sign up at [neon.tech](https://neon.tech) — no card required.
+2. Create a project (any name; pick a region close to where Render will run).
+3. From the project dashboard, copy the **connection string**. It looks like:
+   ```
+   postgresql://<user>:<password>@<endpoint>.neon.tech/<dbname>?sslmode=require
+   ```
+4. Translate that into three values you'll need in step 2:
+   - `SPRING_DATASOURCE_URL` = `jdbc:postgresql://<endpoint>.neon.tech/<dbname>?sslmode=require`
+   - `SPRING_DATASOURCE_USERNAME` = `<user>`
+   - `SPRING_DATASOURCE_PASSWORD` = `<password>`
 
-## 2. Deploy the backend + database
+## 2. Backend: Render
 
-SSH into the VM:
+1. Sign up at [render.com](https://render.com) — no card required.
+2. **New → Web Service**, connect the `Rives-estate` GitHub repo.
+3. Render should auto-detect the root `Dockerfile` (environment: **Docker**).
+   If asked, leave the Dockerfile path as `./Dockerfile` and the build
+   context as the repo root.
+4. Instance type: **Free**.
+5. Environment tab — add these (see `.env.example` for the full list):
+   - `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`,
+     `SPRING_DATASOURCE_PASSWORD` — from step 1
+   - `JWT_SECRET_KEY` — `openssl rand -base64 32`
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+   - `APP_FRONTEND_ORIGIN` — leave as `http://localhost:5173` for now,
+     you'll come back and fix this in step 4
+   - `SERVER_PORT` = `10000` — **required**. Render always injects its own
+     `PORT` env var (default `10000`) and expects the app to bind to it, but
+     Spring Boot's environment-variable binding only recognizes the name
+     `SERVER_PORT` (which it auto-maps to the `server.port` property), not a
+     bare `PORT`. Without this, the app starts fine but Render can never
+     reach it, so health checks fail. `application.properties` isn't part of
+     this at all — it's git-ignored, so it never reaches Render's build;
+     this env var is the only thing that makes the port match.
+6. Deploy. Render assigns a URL like `https://rives-estate.onrender.com` —
+   that's your backend's public HTTPS URL, no further setup needed.
+7. Verify: `curl https://your-service.onrender.com/properties/all` should
+   return `[]` (or your existing properties).
 
-```bash
-git clone https://github.com/sengarsumit/Rives-estate.git
-cd Rives-estate
-cp .env.example .env
-```
+## 3. Frontend: Vercel
 
-Edit `.env`: set `DB_PASSWORD`, `JWT_SECRET_KEY` (`openssl rand -base64 32`),
-your Cloudinary credentials, `DOMAIN` (the one you pointed at this VM), and
-leave `APP_FRONTEND_ORIGIN` for now — you'll come back to it after step 3.
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-This starts three containers: `db` (Postgres, data persisted in a named
-volume), `backend` (built from the root `Dockerfile`), and `caddy` (reverse
-proxy, gets a Let's Encrypt certificate for `DOMAIN` automatically). First
-startup takes a minute or two while Caddy issues the certificate.
-
-Verify: `curl https://your-domain/properties/all` should return `[]` (or
-your existing properties) over HTTPS.
-
-## 3. Deploy the frontend
-
-On [Vercel](https://vercel.com) (or Netlify — the repo's `vercel.json` is
-Vercel-specific, but the equivalent is a one-line redirect rule on any
-static host):
-
-1. Import the `rives-frontend` GitHub repo.
-2. **Root directory**: `rives-frontend` — the actual project lives one
+1. Sign up at [vercel.com](https://vercel.com) — no card required for the
+   free tier.
+2. Import the `rives-frontend` GitHub repo.
+3. **Root directory**: `rives-frontend` — the actual project lives one
    level below the repo root (`Rives-frontend/rives-frontend/` locally).
-3. Environment variable: `VITE_API_BASE_URL` = `https://your-domain` (the
-   backend's HTTPS URL from step 2, no trailing slash).
-4. Deploy. Vercel gives you a `https://<project>.vercel.app` URL (or attach
-   your own domain).
+4. Environment variable: `VITE_API_BASE_URL` = your Render URL from step 2
+   (no trailing slash).
+5. Deploy. Vercel gives you `https://<project>.vercel.app`.
 
 ## 4. Close the loop: point the backend at the real frontend origin
 
-Back on the VM:
-
-```bash
-# edit .env: set APP_FRONTEND_ORIGIN to the Vercel URL from step 3
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build backend
-```
-
-Without this, CORS and the WebSocket handshake will reject the deployed
-frontend (defaults to `http://localhost:5173`, which only matches local dev).
+Back in Render's dashboard → Environment: set `APP_FRONTEND_ORIGIN` to the
+Vercel URL from step 3, save (Render redeploys automatically on env var
+changes). Without this, CORS and the WebSocket handshake reject the deployed
+frontend.
 
 ## 5. Verify
 
@@ -92,14 +86,17 @@ frontend (defaults to `http://localhost:5173`, which only matches local dev).
   message a dealer, refresh the page mid-session (access-token refresh).
 - Check the browser's Network tab: the `/ws` WebSocket connection should
   show `101 Switching Protocols`, not fail.
-- `docker compose logs -f backend` on the VM if anything 500s.
+- First request after either service has been idle will be slow (cold
+  start) — that's expected on the free tier, not a bug.
+- Render's dashboard has a live log tab if anything 500s.
 
 ## Updating
 
-```bash
-git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build backend
-```
+Push to the branch Render/Vercel are watching — both auto-deploy on push, no
+manual redeploy step needed.
 
-Postgres data survives (`docker compose down`, not `down -v`, if you ever
-need to stop the stack — `-v` deletes the volume and the data with it).
+## Local development
+
+`docker-compose.yml` (Postgres only, or Postgres + backend together) is
+unrelated to this deployment path and still works for local dev exactly as
+before — see the main `README.md`.
