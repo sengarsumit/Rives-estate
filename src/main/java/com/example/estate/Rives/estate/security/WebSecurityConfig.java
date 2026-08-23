@@ -64,6 +64,10 @@ public class WebSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Public so the keep-alive self-ping (KeepAliveScheduler) and any
+                        // external uptime monitor can reach it unauthenticated. Only exposes
+                        // {"status":"UP"/"DOWN"} - Boot's show-details default is "never".
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         // Browsing is public (see Home page copy: "Free to browse"). The
                         // {id} pattern is constrained to a UUID shape so it can't also
                         // match literal sibling paths like /properties/mine or

@@ -68,4 +68,12 @@ class MethodSecurityIntegrationTest {
         mockMvc.perform(get("/api/v1/users/all").with(authentication(asUser(plainUser))))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void actuatorHealth_isReachableWithoutAuthentication() throws Exception {
+        // KeepAliveScheduler (and any external uptime monitor) hits this
+        // unauthenticated - see WebSecurityConfig's permitAll for it.
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
+    }
 }

@@ -111,6 +111,33 @@ frontend.
   start) — that's expected on the free tier, not a bug.
 - Render's dashboard has a live log tab if anything 500s.
 
+## Optional: avoiding cold starts
+
+By default both free tiers spin down when idle (see "Why this combination"
+above) — that's the accepted tradeoff for zero-cost hosting, and the app
+works fine with it. If the occasional 30–60s cold start is annoying enough
+to trade away some of that free-tier budget, set two env vars on Render:
+
+- `APP_KEEP_ALIVE_ENABLED=true`
+- `APP_KEEP_ALIVE_URL=https://your-service.onrender.com/actuator/health`
+  (your actual Render URL from step 2, plus `/actuator/health`)
+
+This makes the backend ping its own public health endpoint every 4 minutes
+(`KeepAliveScheduler`). That's real external HTTP traffic, which is what
+actually resets Render's idle timer — an in-process timer alone can't do
+that, since Render's idle detection is based on inbound traffic, not on
+whether the process is busy internally. The health check also runs a real
+DB query as a side effect (Spring Boot's default health indicator), which
+keeps Neon's compute from auto-suspending too — one request, both problems.
+
+Worth knowing before turning this on: it means the backend (and its DB
+connection) is now active nearly continuously instead of only when someone's
+actually using the app, which eats into whatever monthly free-tier compute
+budget Render/Neon allow before they'd expect you to upgrade. Check both
+dashboards' current free-tier limits before deciding this is worth it for a
+low-traffic personal project — if you ever hit a limit, this is the first
+thing to turn back off (`APP_KEEP_ALIVE_ENABLED=false` or unset).
+
 ## Updating
 
 Push to the branch Render/Vercel are watching — both auto-deploy on push, no
