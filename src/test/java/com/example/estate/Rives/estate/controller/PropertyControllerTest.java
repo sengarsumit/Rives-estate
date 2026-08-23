@@ -427,4 +427,56 @@ class PropertyControllerTest {
                         .with(authentication(asUser(dealer))))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void deletePropertyImage_anonymous_returns401() throws Exception {
+        UUID propertyId = UUID.randomUUID();
+        UUID imageId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/properties/" + propertyId + "/images/" + imageId).with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deletePropertyImage_unknownProperty_returns404() throws Exception {
+        User dealer = user("dealerbob", Role.DEALER);
+        UUID propertyId = UUID.randomUUID();
+        UUID imageId = UUID.randomUUID();
+        when(propertyService.getPropertyById(propertyId))
+                .thenThrow(new ResourceNotFoundException("Property not found with id: " + propertyId));
+
+        mockMvc.perform(delete("/properties/" + propertyId + "/images/" + imageId)
+                        .with(csrf())
+                        .with(authentication(asUser(dealer))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deletePropertyImage_nonOwner_returns403() throws Exception {
+        User owner = user("dealerbob", Role.DEALER);
+        User otherDealer = user("dealercarl", Role.DEALER);
+        UUID propertyId = UUID.randomUUID();
+        UUID imageId = UUID.randomUUID();
+        when(propertyService.getPropertyById(propertyId)).thenReturn(property(propertyId, owner));
+
+        mockMvc.perform(delete("/properties/" + propertyId + "/images/" + imageId)
+                        .with(csrf())
+                        .with(authentication(asUser(otherDealer))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deletePropertyImage_owner_returns200() throws Exception {
+        User owner = user("dealerbob", Role.DEALER);
+        UUID propertyId = UUID.randomUUID();
+        UUID imageId = UUID.randomUUID();
+        when(propertyService.getPropertyById(propertyId)).thenReturn(property(propertyId, owner));
+
+        mockMvc.perform(delete("/properties/" + propertyId + "/images/" + imageId)
+                        .with(csrf())
+                        .with(authentication(asUser(owner))))
+                .andExpect(status().isOk());
+
+        verify(imageService).deletePropertyImage(propertyId, imageId);
+    }
 }

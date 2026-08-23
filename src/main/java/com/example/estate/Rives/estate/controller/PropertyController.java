@@ -5,6 +5,7 @@ import com.example.estate.Rives.estate.DTO.PropertyResponseDTO;
 import com.example.estate.Rives.estate.DTO.PropertyUpdateDTO;
 import com.example.estate.Rives.estate.DTO.config.PropertyMapper;
 import com.example.estate.Rives.estate.model.Property;
+import com.example.estate.Rives.estate.model.PropertyImage;
 import com.example.estate.Rives.estate.model.User;
 import com.example.estate.Rives.estate.repository.UserRepository;
 import com.example.estate.Rives.estate.service.ImageService;
@@ -80,8 +81,22 @@ public class PropertyController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the owner dealer can upload images");
         }
 
-        List<String> imageUrls = imageService.uploadImages(images, propertyId);
-        return ResponseEntity.ok(imageUrls);
+        List<PropertyImage> uploaded = imageService.uploadImages(images, propertyId);
+        return ResponseEntity.ok(uploaded);
+    }
+
+    @PreAuthorize("hasRole('DEALER')")
+    @DeleteMapping("/{propertyId}/images/{imageId}")
+    public ResponseEntity<?> deletePropertyImage(@PathVariable UUID propertyId,
+                                                  @PathVariable UUID imageId,
+                                                  @AuthenticationPrincipal User loggedInUser) {
+        Property property = propertyService.getPropertyById(propertyId);
+        if (!property.getDealer().getId().equals(loggedInUser.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Only the owner dealer can delete images");
+        }
+
+        imageService.deletePropertyImage(propertyId, imageId);
+        return ResponseEntity.ok().body("image deleted");
     }
 
     // Public: browsing is open to anonymous visitors (see WebSecurityConfig).

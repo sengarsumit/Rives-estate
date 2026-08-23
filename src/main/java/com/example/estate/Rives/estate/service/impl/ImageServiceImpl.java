@@ -22,6 +22,7 @@ public class ImageServiceImpl implements ImageService {
 
     static final int MAX_FILES = 10;
     static final long MAX_FILE_SIZE = 5L * 1024 * 1024; // 5 MB
+    static final int MAX_IMAGES_PER_PROPERTY = 2;
     static final Set<String> ALLOWED_CONTENT_TYPES =
             Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
 
@@ -31,8 +32,8 @@ public class ImageServiceImpl implements ImageService {
 
     // Upload multiple images for a given property ID
     @Override
-    public List<String> uploadImages(List<MultipartFile> files, UUID propertyId) {
-        validateImages(files);
+    public List<PropertyImage> uploadImages(List<MultipartFile> files, UUID propertyId) {
+        validateFiles(files);
 
         Optional<Property> optionalProperty = propertyRepository.findById(propertyId);
         if (optionalProperty.isEmpty()) {
@@ -40,7 +41,14 @@ public class ImageServiceImpl implements ImageService {
         }
 
         Property property = optionalProperty.get();
-        List<String> imageUrls = new ArrayList<>();
+
+        if (property.getImages().size() + files.size() > MAX_IMAGES_PER_PROPERTY) {
+            throw new IllegalArgumentException(
+                    "A property can have at most " + MAX_IMAGES_PER_PROPERTY
+                            + " images (it currently has " + property.getImages().size() + ")");
+        }
+
+        List<PropertyImage> uploaded = new ArrayList<>();
 
         for (MultipartFile file : files) {
             String uniqueName = UUID.randomUUID().toString();
@@ -61,21 +69,21 @@ public class ImageServiceImpl implements ImageService {
                 image.setProperty(property);
                 imageRepository.save(image);
 
-                imageUrls.add(url);
+                uploaded.add(image);
 
             } catch (IOException e) {
                 throw new RuntimeException("Image upload failed: " + e.getMessage(), e);
             }
         }
 
-        return imageUrls;
+        return uploaded;
     }
 
     // Guards the upload against empty/oversized/wrong-type files. Content type is
     // checked instead of the filename extension, which is trivial to spoof. The
     // per-file size limit here is a defensive backstop; Spring's multipart resolver
     // (spring.servlet.multipart.max-file-size) is the first line of enforcement.
-    private void validateImages(List<MultipartFile> files) {
+    private void validateFiles(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("At least one image is required");
         }
@@ -112,5 +120,22 @@ public class ImageServiceImpl implements ImageService {
         } catch (IOException e) {
             throw new RuntimeException("Image deletion failed: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public void deletePropertyImage(UUID propertyId, UUID imageId) {
+        if (!propertyRepository.existsById(propertyId)) {
+            throw new ResourceNotFoundException("Property not found with id: " + propertyId);
+        }
+
+        PropertyImage image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found with id: " + imageId));
+
+        if (!image.getProperty().getId().equals(propertyId)) {
+            throw new ResourceNotFoundException("Image not found with id: " + imageId);
+        }
+
+        deleteImage(image.getPublicId());
+        imageRepository.delete(image);
     }
 }
